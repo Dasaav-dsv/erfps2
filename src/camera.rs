@@ -156,7 +156,7 @@ unsafe fn update_camera(tpf: f32, original: &dyn Fn()) {
         return;
     }
 
-    let (state, Some(mut context)) = control.state_and_context() else {
+    let (state, Some(context)) = control.state_and_context() else {
         drop(control);
         original();
         return;
@@ -170,7 +170,7 @@ unsafe fn update_move_map_step(original: &dyn Fn()) {
     let mut control = CameraControl::lock();
     control.next_frame();
 
-    if let (state, Some(mut context)) = control.state_and_context() {
+    if let (state, Some(context)) = control.state_and_context() {
         context.try_transition(state);
 
         if state.first_person() {
@@ -189,7 +189,7 @@ unsafe fn update_lock_tgt(original: &dyn Fn()) {
     let mut control = CameraControl::lock();
 
     if control.first_person()
-        && let (_, Some(mut context)) = control.state_and_context()
+        && let (_, Some(context)) = control.state_and_context()
         && !context.player.is_sprinting()
         && !context.player.is_riding()
         && !context.player.is_on_ladder()

@@ -1,5 +1,5 @@
 use std::{
-    cell::{LazyCell, RefCell, RefMut},
+    cell::LazyCell,
     collections::VecDeque,
     mem,
     ops::{Deref, DerefMut},
@@ -22,7 +22,7 @@ use crate::{
 #[derive(Default)]
 pub struct CameraControl {
     state: CameraState,
-    context: RefCell<Option<CameraContext>>,
+    context: Option<CameraContext>,
 }
 
 pub struct CameraState {
@@ -65,39 +65,14 @@ impl CameraControl {
         STATE.lock().unwrap()
     }
 
-    pub fn state_and_context(&mut self) -> (&mut CameraState, Option<RefMut<'_, CameraContext>>) {
+    pub fn state_and_context(&mut self) -> (&mut CameraState, Option<&mut CameraContext>) {
         let Self { state, context } = self;
-
-        let context = RefMut::filter_map(context.borrow_mut(), |opt| match opt {
-            Some(context) => Some(context),
-            None => {
-                let cs_cam = unsafe { CSCamera::instance().ok()? };
-
-                let world_chr_man = unsafe { WorldChrMan::instance().ok()? };
-                let chr_cam = unsafe { world_chr_man.chr_cam?.as_mut() };
-
-                let lock_tgt = unsafe { LockTgtMan::instance().ok()? };
-
-                let player = PlayerIns::main_player()?;
-
-                let context = opt.get_or_insert(CameraContext {
-                    frame: 0,
-                    cs_cam,
-                    chr_cam,
-                    lock_tgt,
-                    player,
-                    stabilizer: Default::default(),
-                });
-
-                Some(context)
-            }
-        });
-
-        (state, context.ok())
+        *context = CameraContext::try_update(context.take());
+        (state, context.as_mut())
     }
 
-    pub fn next_frame(&self) {
-        if let Some(context) = &mut *self.context.borrow_mut() {
+    pub fn next_frame(&mut self) {
+        if let Some(context) = &mut self.context {
             context.frame += 1;
         }
     }
@@ -224,7 +199,7 @@ impl CameraContext {
 
         self.player.enable_face_model(false);
 
-        let camera_pos = self.camera_position(&state);
+        let camera_pos = self.camera_position(state);
 
         if self.player.is_on_ladder() || self.player.is_in_throw() {
             self.cs_cam.pers_cam_1.matrix = camera_pos;
@@ -241,13 +216,34 @@ impl CameraContext {
         self.cs_cam.pers_cam_1.fov = fov;
         self.chr_cam.pers_cam.fov = fov;
     }
+
+    fn try_update(context: Option<Self>) -> Option<Self> {
+        let world_chr_man = unsafe { WorldChrMan::instance().ok()? };
+
+        let cs_cam = unsafe { CSCamera::instance().ok()? };
+        let chr_cam = unsafe { world_chr_man.chr_cam?.as_mut() };
+        let lock_tgt = unsafe { LockTgtMan::instance().ok()? };
+        let player = world_chr_man.main_player.as_deref_mut()?;
+
+        let (frame, stabilizer) = context
+            .map(|context| (context.frame, context.stabilizer))
+            .unwrap_or_default();
+
+        Some(Self {
+            cs_cam,
+            chr_cam,
+            lock_tgt,
+            player,
+            frame,
+            stabilizer,
+        })
+    }
 }
 
 impl CameraStabilizer {
     const FRAMES: usize = 20;
 
     fn next(&mut self, frame: u64, new: Vec3) -> Vec3 {
-        let frame = frame.saturating_add(1);
         let prev_frame = mem::replace(&mut self.frame, frame);
 
         if prev_frame != frame {
@@ -266,7 +262,7 @@ impl CameraStabilizer {
     }
 
     fn average(&self, default: Vec3) -> Vec3 {
-        if self.buf.len() != 0 {
+        if !self.buf.is_empty() {
             self.buf.iter().sum::<Vec3>() / self.buf.len() as f32
         } else {
             default
