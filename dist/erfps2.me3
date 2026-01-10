@@ -1,0 +1,9 @@
+profileVersion = "v1"
+
+disable_arxan = true
+
+[[supports]]
+game = "eldenring"
+
+[[natives]]
+path = "erfps2.dll"
