@@ -81,7 +81,7 @@ float2 MapUvBarrel(float2 uv)
     float strength = g_ErfpsCorrectParam.x;
     float height = g_ErfpsCorrectParam.y * g_vCameraParam.y;
     float aspectRatio = g_vCameraParam.x;
-    float cylindricalRatio = 1.414;
+    float cylindricalRatio = 1.0;
 
     float scaledHeight = strength * height;
     float cylAspectRatio = aspectRatio * cylindricalRatio;
