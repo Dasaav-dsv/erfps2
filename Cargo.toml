@@ -22,3 +22,5 @@ windows = { version = "0.62.2", features = [
     "Win32_System_Memory",
 ] }
 winhook = "0.1.1"
+toml = "0.9.11"
+serde = { version = "1.0.228", features = ["serde_derive"] }

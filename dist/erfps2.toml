@@ -1,0 +1,36 @@
+# ERFPS (Ver.2) configuration.
+# This config may be edited at runtime, with changes affecting the live game.
+# Do not remove any fields!
+
+[fov]
+# Horizontal field of view (in degrees) in first person.
+# Possible value range: 45.0 - 130.0
+horizontal_fov = 85.0
+
+# Correction of distortion caused by high FOV.
+# These options reduce FOV distortion and may improve depth perception in first person.
+# Possible values: "none", "fisheye", "barrel"
+fov_correction = "fisheye"
+
+# The strength of FOV correction.
+# Larger values may introduce visible radial curvature and a reduction in image quality.
+# Possible value range: 0.0 - 1.0
+fov_correction_strength = 0.55
+
+[stabilizer]
+# Stabilization of camera movement in first person.
+enabled = true
+
+# The time period (in fractions of a second) to sample camera positions.
+# Larger values result in smoother camera movement but make it slower to adjust.
+# Possible value range: 0.1 - 1.0
+smoothing_window = 0.3
+
+# The strength of camera smoothing.
+# Larger values result in smoother camera movement but also separate it from the player's.
+# Possible value range: 0.0 - 1.0
+smoothing_factor = 0.8
+
+[crosshair]
+# Crosshair in first person.
+enabled = true

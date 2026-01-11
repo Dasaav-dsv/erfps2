@@ -7,7 +7,7 @@ DXC_PATH="/usr/bin/dxc/"
 
 cargo build || exit 1
 cd target/x86_64-pc-windows-msvc/debug || exit 1
-mkdir -p .hotpatch && cp -u erfps2.dll .hotpatch/erfps2.dll
+mkdir -p .hotpatch && cp -u erfps2.dll .hotpatch/erfps2.dll && cp -u ../../../dist/erfps2.toml .hotpatch/erfps2.toml
 
 trap "kill 0" SIGINT
 

@@ -30,7 +30,7 @@ jobs:
     - name: Build
       run: cargo build --release --verbose
 
-    - run: Copy-Item ".\target\x86_64-pc-windows-msvc\release\erfps2.dll" -Destination ".\erfps2.dll"; Copy-Item ".\dist\erfps2.me3" -Destination ".\erfps2.me3"
+    - run: Copy-Item ".\target\x86_64-pc-windows-msvc\release\erfps2.dll" -Destination ".\erfps2.dll"; Copy-Item ".\dist\erfps2.me3" -Destination ".\erfps2.me3"; Copy-Item ".\dist\erfps2.toml" -Destination ".\erfps2.toml"
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v6
@@ -39,3 +39,4 @@ jobs:
         path: |
           ./erfps2.dll
           ./erfps2.me3
+          ./erfps2.toml

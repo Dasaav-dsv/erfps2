@@ -13,28 +13,50 @@ use fromsoftware_shared::{F32ViewMatrix, FromStatic};
 use glam::{Mat4, Vec3, Vec4};
 
 use crate::{
+    config::{Config, FovCorrection, updater::ConfigUpdater},
     player::PlayerExt,
     program::Program,
     rva::CAM_WALL_RECOVERY_RVA,
     shaders::{enable_crosshair, enable_dithering, enable_fov_correction},
 };
 
-#[derive(Default)]
 pub struct CameraControl {
     state: CameraState,
     context: Option<CameraContext>,
+    updater: ConfigUpdater,
 }
 
 pub struct CameraState {
     first_person: bool,
+
+    should_transition: bool,
+
     pub fov: f32,
+
     pub tpf: f32,
+
     pub trans_time: f32,
+
     pub angle_limit: f32,
-    pub correct_use_barrel: bool,
-    pub correct_strength: f32,
+
+    pub use_stabilizer: bool,
+
+    pub stabilizer_window: f32,
+
+    pub stabilizer_factor: f32,
+
+    pub use_crosshair: bool,
+
+    pub use_fov_correction: bool,
+
+    pub use_barrel_correction: bool,
+
+    pub correction_strength: f32,
+
     pub saved_angle_limit: Option<f32>,
+
     pub in_head_offset_y: f32,
+
     pub in_head_offset_z: f32,
 }
 
@@ -55,21 +77,48 @@ pub struct LockTgtMan {
     pub is_lock_on_requested: bool,
 }
 
-#[derive(Default)]
 struct CameraStabilizer {
     frame: u64,
+    samples: u32,
     buf: VecDeque<Vec3>,
 }
 
 impl CameraControl {
     pub fn lock() -> MutexGuard<'static, LazyCell<Self>> {
-        static STATE: Mutex<LazyCell<CameraControl>> = Mutex::new(LazyCell::new(Default::default));
+        static STATE: Mutex<LazyCell<CameraControl>> =
+            Mutex::new(LazyCell::new(CameraControl::new));
         STATE.lock().unwrap()
     }
 
+    pub fn new() -> Self {
+        let mut updater = ConfigUpdater::new().unwrap();
+
+        let state = updater.get_or_update().map_or_else(
+            |error| {
+                log::error!(
+                    "failed to update config: {error}. Is it placed in the same directory as erfps2.dll?"
+                );
+                CameraState::default()
+            },
+            CameraState::from,
+        );
+
+        Self {
+            state,
+            context: None,
+            updater,
+        }
+    }
+
     pub fn state_and_context(&mut self) -> (&mut CameraState, Option<&mut CameraContext>) {
-        let Self { state, context } = self;
-        *context = CameraContext::try_update(context.take());
+        let Self {
+            state,
+            context,
+            updater,
+        } = self;
+
+        *context = state.try_update(context.take(), updater);
+
         (state, context.as_mut())
     }
 
@@ -115,6 +164,56 @@ impl CameraState {
             }
         }
     }
+
+    fn try_update(
+        &mut self,
+        context: Option<CameraContext>,
+        updater: &mut ConfigUpdater,
+    ) -> Option<CameraContext> {
+        if let Ok(config) = updater.get_or_update() {
+            *self = Self {
+                first_person: self.first_person,
+                should_transition: self.should_transition,
+                tpf: self.tpf,
+                trans_time: self.trans_time,
+                ..config.into()
+            };
+
+            self.update_fov_correction();
+        }
+
+        let world_chr_man = unsafe { WorldChrMan::instance().ok()? };
+
+        let cs_cam = unsafe { CSCamera::instance().ok()? };
+        let chr_cam = unsafe { world_chr_man.chr_cam?.as_mut() };
+        let lock_tgt = unsafe { LockTgtMan::instance().ok()? };
+        let player = world_chr_man.main_player.as_deref_mut()?;
+
+        let (frame, stabilizer) = context
+            .map(|context| (context.frame, context.stabilizer))
+            .unwrap_or_else(|| {
+                let samples = self.stabilizer_window / self.tpf;
+                (0, CameraStabilizer::new(samples.ceil() as u32))
+            });
+
+        Some(CameraContext {
+            cs_cam,
+            chr_cam,
+            lock_tgt,
+            player,
+            frame,
+            stabilizer,
+        })
+    }
+
+    fn update_fov_correction(&self) {
+        enable_fov_correction(
+            self.first_person && self.use_fov_correction,
+            self.correction_strength,
+            self.use_barrel_correction,
+            self.fov,
+        );
+    }
 }
 
 impl CameraContext {
@@ -130,20 +229,16 @@ impl CameraContext {
             false => state.trans_time = 0.0,
         }
 
-        if state.trans_time > STATE_TRANS_TIME
-            && self.lock_tgt.is_locked_on != self.lock_tgt.is_lock_on_requested
+        if (state.trans_time > STATE_TRANS_TIME
+            && self.lock_tgt.is_locked_on != self.lock_tgt.is_lock_on_requested)
+            || state.should_transition
         {
             state.first_person = !state.first_person;
+            state.should_transition = false;
 
             self.lock_tgt.is_lock_on_requested = false;
 
-            enable_fov_correction(
-                state.first_person,
-                state.correct_strength,
-                state.correct_use_barrel,
-                state.fov,
-            );
-
+            state.update_fov_correction();
             enable_dithering(!state.first_person);
 
             self.player.enable_face_model(!state.first_person);
@@ -152,17 +247,21 @@ impl CameraContext {
 
     pub fn camera_position(&mut self, state: &CameraState) -> F32ViewMatrix {
         let mut head_pos = self.player.head_position();
+        let mut new_head_pos = Vec4::from(head_pos.3).truncate();
 
-        let player_pos = Mat4::from(self.player.chr_ctrl.model_matrix);
-        let abs_head_pos = player_pos
-            .inverse()
-            .transform_point3(head_pos.translation());
+        if state.use_stabilizer {
+            let player_pos = Mat4::from(self.player.chr_ctrl.model_matrix);
+            let abs_head_pos = player_pos
+                .inverse()
+                .transform_point3(head_pos.translation());
 
-        let stabilized = self.stabilizer.next(self.frame, abs_head_pos);
-        let delta = stabilized - abs_head_pos;
+            let stabilized = self.stabilizer.next(self.frame, abs_head_pos);
+            let delta = stabilized - abs_head_pos;
 
-        let mut new_head_pos =
-            player_pos.transform_point3(abs_head_pos + delta.clamp_length_max(0.08));
+            new_head_pos = player_pos.transform_point3(
+                abs_head_pos + delta.clamp_length_max(state.stabilizer_factor * 0.1),
+            );
+        }
 
         let y_offset = Vec3::new(0.0, 1.0, 0.0);
         let z_offset = Vec4::from(head_pos.2)
@@ -203,7 +302,7 @@ impl CameraContext {
     }
 
     pub fn update_chr_cam(&mut self, state: &CameraState) {
-        enable_crosshair(!self.lock_tgt.is_locked_on);
+        enable_crosshair(!self.lock_tgt.is_locked_on && state.use_crosshair);
 
         self.player.enable_face_model(false);
 
@@ -224,32 +323,16 @@ impl CameraContext {
         self.cs_cam.pers_cam_1.fov = fov;
         self.chr_cam.pers_cam.fov = fov;
     }
-
-    fn try_update(context: Option<Self>) -> Option<Self> {
-        let world_chr_man = unsafe { WorldChrMan::instance().ok()? };
-
-        let cs_cam = unsafe { CSCamera::instance().ok()? };
-        let chr_cam = unsafe { world_chr_man.chr_cam?.as_mut() };
-        let lock_tgt = unsafe { LockTgtMan::instance().ok()? };
-        let player = world_chr_man.main_player.as_deref_mut()?;
-
-        let (frame, stabilizer) = context
-            .map(|context| (context.frame, context.stabilizer))
-            .unwrap_or_default();
-
-        Some(Self {
-            cs_cam,
-            chr_cam,
-            lock_tgt,
-            player,
-            frame,
-            stabilizer,
-        })
-    }
 }
 
 impl CameraStabilizer {
-    const FRAMES: usize = 20;
+    fn new(samples: u32) -> Self {
+        Self {
+            frame: 0,
+            samples,
+            buf: VecDeque::new(),
+        }
+    }
 
     fn next(&mut self, frame: u64, new: Vec3) -> Vec3 {
         let prev_frame = mem::replace(&mut self.frame, frame);
@@ -260,10 +343,7 @@ impl CameraStabilizer {
             }
 
             self.buf.push_front(new);
-
-            if self.buf.len() > Self::FRAMES {
-                self.buf.pop_back();
-            }
+            self.buf.truncate(self.samples as usize);
         }
 
         self.average(new)
@@ -295,17 +375,48 @@ impl DerefMut for CameraControl {
 impl Default for CameraState {
     fn default() -> Self {
         Self {
-            first_person: true,
+            first_person: false,
+            should_transition: true,
             fov: const { f32::to_radians(85.0) },
             tpf: const { 1.0 / 60.0 },
             trans_time: 0.0,
             angle_limit: const { f32::to_radians(50.0) },
-            correct_use_barrel: false,
-            correct_strength: 0.5,
+            stabilizer_window: 0.3,
+            stabilizer_factor: 0.8,
+            use_stabilizer: true,
+            use_crosshair: true,
+            use_fov_correction: true,
+            use_barrel_correction: false,
+            correction_strength: 0.5,
             saved_angle_limit: None,
             in_head_offset_y: 0.015,
             in_head_offset_z: -0.02,
         }
+    }
+}
+
+impl From<&Config> for CameraState {
+    fn from(config: &Config) -> Self {
+        let mut state = Self::default();
+
+        let degrees = config.fov.horizontal_fov.clamp(45.0, 130.0);
+        state.fov = degrees.to_radians();
+
+        match config.fov.fov_correction {
+            FovCorrection::None => state.use_fov_correction = false,
+            FovCorrection::Fisheye => state.use_barrel_correction = false,
+            FovCorrection::Barrel => state.use_barrel_correction = true,
+        }
+
+        state.correction_strength = config.fov.fov_correction_strength;
+
+        state.use_stabilizer = config.stabilizer.enabled;
+        state.stabilizer_window = config.stabilizer.smoothing_window.clamp(0.1, 1.0);
+        state.stabilizer_factor = config.stabilizer.smoothing_factor.clamp(0.0, 1.0);
+
+        state.use_crosshair = config.crosshair.enabled;
+
+        state
     }
 }
 
