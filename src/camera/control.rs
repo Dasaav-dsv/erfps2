@@ -239,7 +239,9 @@ impl CameraContext {
             self.lock_tgt.is_lock_on_requested = false;
 
             state.update_fov_correction();
+
             enable_dithering(!state.first_person);
+            enable_crosshair(state.first_person);
 
             self.player.enable_face_model(!state.first_person);
         }
