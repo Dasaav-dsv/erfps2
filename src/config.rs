@@ -25,7 +25,7 @@ pub struct Stabilizer {
 
 #[derive(Debug, Deserialize)]
 pub struct Crosshair {
-    pub crosshair_kind: CrosshairKind,
+    pub kind: CrosshairKind,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Deserialize)]

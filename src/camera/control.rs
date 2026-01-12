@@ -438,7 +438,7 @@ impl From<&Config> for CameraState {
         state.stabilizer_window = config.stabilizer.smoothing_window.clamp(0.1, 1.0);
         state.stabilizer_factor = config.stabilizer.smoothing_factor.clamp(0.0, 1.0);
 
-        state.crosshair = config.crosshair.crosshair_kind;
+        state.crosshair = config.crosshair.kind;
 
         state
     }

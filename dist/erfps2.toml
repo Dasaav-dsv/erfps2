@@ -33,5 +33,5 @@ smoothing_factor = 0.8
 
 [crosshair]
 # Crosshair in first person.
-# Possible values: "none", "cross", "dot", "circle"
-crosshair_kind = "cross"
+# Possible values: "none", "cross", "dot", "circle", "circledot"
+kind = "cross"
