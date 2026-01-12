@@ -67,6 +67,7 @@ pub fn hook_shaders(program: Program) -> eyre::Result<()> {
 
 static SHADER_FLAGS: AtomicU32 = AtomicU32::new(0);
 static SHADER_PARAMS: AtomicU64 = AtomicU64::new(0);
+static SHADER_PARAMS2: AtomicU64 = AtomicU64::new(0);
 
 pub fn enable_fov_correction(state: bool, strength: f32, use_barrel: bool, vfov: f32) {
     let state = state && strength > 0.05;
@@ -82,10 +83,15 @@ pub fn enable_fov_correction(state: bool, strength: f32, use_barrel: bool, vfov:
     }
 }
 
-pub fn set_crosshair(crosshair: CrosshairKind) {
+pub fn set_crosshair(crosshair: CrosshairKind, scale: (f32, f32)) {
     let _ = SHADER_FLAGS.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |value| {
-        Some(value & !12 | (crosshair as u32) << 2)
+        Some(value & !0b11100 | (crosshair as u32 & 0b111) << 2)
     });
+
+    let rscale_x = scale.0.recip().to_bits() as u64;
+    let rscale_y = scale.1.recip().to_bits() as u64;
+
+    SHADER_PARAMS2.store(rscale_x | (rscale_y << 32), Ordering::Relaxed);
 }
 
 unsafe fn hook_shader_cb(program: Program) -> eyre::Result<()> {
@@ -107,9 +113,13 @@ unsafe fn hook_shader_cb(program: Program) -> eyre::Result<()> {
             // Forward the screen width ratio to the shader (see above).
             "mov rax,[rip+{}]",
             "mov [rbp+0xa8],rax",
+            // Forward the crosshair size.
+            "mov rax,[rip+{}]",
+            "mov [rbp+0x148],rax",
             "ret",
             sym SHADER_FLAGS,
             sym SHADER_PARAMS,
+            sym SHADER_PARAMS2,
         }
     }
 

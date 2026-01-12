@@ -39,7 +39,8 @@ cbuffer cbToneMap : register(b1)
     float4 g_vSampleDistanceAdjust;
     int4 g_vMaxSampleCount;
     float4 g_vScenePreExposure;
-    float4 g_vCameraParam;
+    float2 g_vCameraParam;
+    float2 g_ErfpsCrosshairScaleReciprocal;
 };
 
 SamplerState SS_ClampLinear : register(s1);
@@ -102,10 +103,10 @@ float2 MapUvBarrel(float2 uv)
 
 bool CrosshairTest(float2 uv)
 {
-    float2 c = uv - 0.5;
+    float2 c = (uv - 0.5) * g_ErfpsCrosshairScaleReciprocal;
     float2 cScreen = c * float2(g_vCameraParam.x, 1.0) * g_dynamicScreenPercentage;
 
-    int crosshairKind = (g_ErfpsFlags >> 2) & 3;
+    int crosshairKind = (g_ErfpsFlags >> 2) & 7;
     switch (crosshairKind)
     {
         case 1: {
@@ -119,6 +120,10 @@ bool CrosshairTest(float2 uv)
         case 3: {
             float r = length(cScreen);
             return r > 0.0066 && r < 0.0080;
+        }
+        case 4: {
+            float r = length(cScreen);
+            return (r > 0.0066 && r < 0.0080) || r < 0.0012;
         }
         default:
             return false;

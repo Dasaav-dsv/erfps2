@@ -26,6 +26,8 @@ pub struct Stabilizer {
 #[derive(Debug, Deserialize)]
 pub struct Crosshair {
     pub kind: CrosshairKind,
+    pub scale_x: f32,
+    pub scale_y: f32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Deserialize)]
@@ -43,6 +45,7 @@ pub enum CrosshairKind {
     Cross,
     Dot,
     Circle,
+    CircleDot,
 }
 
 #[cfg(test)]

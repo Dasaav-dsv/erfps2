@@ -47,6 +47,8 @@ pub struct CameraState {
 
     pub crosshair: CrosshairKind,
 
+    pub crosshair_scale: (f32, f32),
+
     pub use_fov_correction: bool,
 
     pub use_barrel_correction: bool,
@@ -223,7 +225,7 @@ impl CameraState {
             CrosshairKind::None
         };
 
-        set_crosshair(crosshair);
+        set_crosshair(crosshair, self.crosshair_scale);
     }
 }
 
@@ -409,6 +411,7 @@ impl Default for CameraState {
             stabilizer_factor: 0.8,
             use_stabilizer: true,
             crosshair: CrosshairKind::Cross,
+            crosshair_scale: (1.0, 1.0),
             use_fov_correction: true,
             use_barrel_correction: false,
             correction_strength: 0.5,
@@ -439,6 +442,8 @@ impl From<&Config> for CameraState {
         state.stabilizer_factor = config.stabilizer.smoothing_factor.clamp(0.0, 1.0);
 
         state.crosshair = config.crosshair.kind;
+        state.crosshair_scale.0 = config.crosshair.scale_x.clamp(0.1, 4.0);
+        state.crosshair_scale.1 = config.crosshair.scale_y.clamp(0.1, 4.0);
 
         state
     }
