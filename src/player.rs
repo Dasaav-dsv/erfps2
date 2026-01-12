@@ -104,6 +104,9 @@ impl PlayerExt for PlayerIns {
             // Model mask 36 (bit 11 in the u64 at +0x48).
             let hood_model_mask = unsafe { chr_asm_model_res.add(0x49).as_mut() };
             *hood_model_mask = *hood_model_mask & !8 | (!state as u8) << 3;
+            // Model mask ??
+            let hood_model_mask2 = unsafe { chr_asm_model_res.add(0x50).as_mut() };
+            *hood_model_mask2 = *hood_model_mask2 & !32 | (!state as u8) << 5;
         }
     }
 
