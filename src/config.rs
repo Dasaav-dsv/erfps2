@@ -25,7 +25,7 @@ pub struct Stabilizer {
 
 #[derive(Debug, Deserialize)]
 pub struct Crosshair {
-    pub enabled: bool,
+    pub crosshair_kind: CrosshairKind,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Deserialize)]
@@ -34,6 +34,15 @@ pub enum FovCorrection {
     None,
     Fisheye,
     Barrel,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CrosshairKind {
+    None,
+    Cross,
+    Dot,
+    Circle,
 }
 
 #[cfg(test)]

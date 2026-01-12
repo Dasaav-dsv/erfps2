@@ -13,11 +13,11 @@ use fromsoftware_shared::{F32ViewMatrix, FromStatic};
 use glam::{Mat4, Vec3, Vec4};
 
 use crate::{
-    config::{Config, FovCorrection, updater::ConfigUpdater},
+    config::{Config, CrosshairKind, FovCorrection, updater::ConfigUpdater},
     player::PlayerExt,
     program::Program,
     rva::CAM_WALL_RECOVERY_RVA,
-    shaders::{enable_crosshair, enable_dithering, enable_fov_correction},
+    shaders::{enable_dithering, enable_fov_correction, set_crosshair},
 };
 
 pub struct CameraControl {
@@ -45,7 +45,7 @@ pub struct CameraState {
 
     pub stabilizer_factor: f32,
 
-    pub use_crosshair: bool,
+    pub crosshair: CrosshairKind,
 
     pub use_fov_correction: bool,
 
@@ -214,6 +214,14 @@ impl CameraState {
             self.fov,
         );
     }
+
+    fn crosshair_if(&self, cond: bool) -> CrosshairKind {
+        if cond {
+            self.crosshair
+        } else {
+            CrosshairKind::None
+        }
+    }
 }
 
 impl CameraContext {
@@ -241,7 +249,7 @@ impl CameraContext {
             state.update_fov_correction();
 
             enable_dithering(!state.first_person);
-            enable_crosshair(state.first_person);
+            set_crosshair(state.crosshair_if(state.first_person));
 
             self.player.enable_face_model(!state.first_person);
         }
@@ -304,7 +312,7 @@ impl CameraContext {
     }
 
     pub fn update_chr_cam(&mut self, state: &CameraState) {
-        enable_crosshair(!self.lock_tgt.is_locked_on && state.use_crosshair);
+        set_crosshair(state.crosshair_if(!self.lock_tgt.is_locked_on));
 
         self.player.enable_face_model(false);
 
@@ -386,7 +394,7 @@ impl Default for CameraState {
             stabilizer_window: 0.3,
             stabilizer_factor: 0.8,
             use_stabilizer: true,
-            use_crosshair: true,
+            crosshair: CrosshairKind::Cross,
             use_fov_correction: true,
             use_barrel_correction: false,
             correction_strength: 0.5,
@@ -416,7 +424,7 @@ impl From<&Config> for CameraState {
         state.stabilizer_window = config.stabilizer.smoothing_window.clamp(0.1, 1.0);
         state.stabilizer_factor = config.stabilizer.smoothing_factor.clamp(0.0, 1.0);
 
-        state.use_crosshair = config.crosshair.enabled;
+        state.crosshair = config.crosshair.crosshair_kind;
 
         state
     }

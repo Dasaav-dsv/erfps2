@@ -12,6 +12,7 @@ use windows::{
 use winhook::HookInstaller;
 
 use crate::{
+    config::CrosshairKind,
     program::Program,
     rva::{ADD_PIXEL_SHADER_RVA, CB_FISHEYE_HOOK_RVA, USES_DITHERING_RVA},
 };
@@ -71,7 +72,7 @@ pub fn enable_fov_correction(state: bool, strength: f32, use_barrel: bool, vfov:
     let state = state && strength > 0.05;
 
     set_shader_flag(state, 0);
-    set_shader_flag(use_barrel, 2);
+    set_shader_flag(use_barrel, 1);
 
     if state {
         let strength = strength.to_bits() as u64;
@@ -81,8 +82,10 @@ pub fn enable_fov_correction(state: bool, strength: f32, use_barrel: bool, vfov:
     }
 }
 
-pub fn enable_crosshair(state: bool) {
-    set_shader_flag(state, 1);
+pub fn set_crosshair(crosshair: CrosshairKind) {
+    let _ = SHADER_FLAGS.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |value| {
+        Some(value & !12 | (crosshair as u32) << 2)
+    });
 }
 
 unsafe fn hook_shader_cb(program: Program) -> eyre::Result<()> {

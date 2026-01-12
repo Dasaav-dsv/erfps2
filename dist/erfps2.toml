@@ -33,4 +33,5 @@ smoothing_factor = 0.8
 
 [crosshair]
 # Crosshair in first person.
-enabled = true
+# Possible values: "none", "cross", "dot", "circle"
+crosshair_kind = "cross"

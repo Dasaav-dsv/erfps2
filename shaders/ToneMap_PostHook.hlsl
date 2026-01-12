@@ -100,28 +100,48 @@ float2 MapUvBarrel(float2 uv)
     return uvp.xy / uvp.z;
 }
 
+bool CrosshairTest(float2 uv)
+{
+    float2 c = uv - 0.5;
+    float2 cScreen = c * g_vChromaticAberrationShapeParam.xy * g_dynamicScreenPercentage;
+
+    int crosshairKind = (g_ErfpsFlags >> 2) & 3;
+    switch (crosshairKind)
+    {
+        case 1: {
+            cScreen = abs(cScreen);
+            return any(cScreen < 0.0014) && all(cScreen < 0.0080);
+        }
+        case 2: {
+            float r = length(cScreen);
+            return r < 0.0018;
+        }
+        case 3: {
+            float r = length(cScreen);
+            return r > 0.0066 && r < 0.0080;
+        }
+        default:
+            return false;
+    }
+}
+
 float4 PSMain(float4 position : SV_Position, float3 coord : TEXCOORD) : SV_TARGET
 {
     float2 xy = coord.xy;
 
     if (g_ErfpsFlags & 1) {
         // Apply FOV correction.
-        if (g_ErfpsFlags & 4) {
+        if (g_ErfpsFlags & 2) {
             xy = MapUvBarrel(xy);
         } else {
             xy = MapUvFisheye(xy);
         }
     }
 
-    if (g_ErfpsFlags & 2) {
+    if (CrosshairTest(xy)) {
         // Draw crosshair.
-        float2 c = xy - 0.5;
-        float2 cScreen = abs(c) * g_vChromaticAberrationShapeParam.xy * g_dynamicScreenPercentage;
-
-        if (any(cScreen < 0.0014) && all(cScreen < 0.008)) {
-            float4 rgba = g_SourceTexture.SampleLevel(SS_ClampLinear, xy, 0);
-            return float4((1.0 - rgba.rgb), 1.0);
-        }
+        float4 rgba = g_SourceTexture.SampleLevel(SS_ClampLinear, xy, 0);
+        return float4((1.0 - rgba.rgb) * 0.9, rgba.a);
     }
 
     float2 xy2m1 = xy * 2.0 - 1.0;
