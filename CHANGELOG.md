@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.3] 2026-01-12
+
+### Added
+
+- Changelog and Discord server links to README.md
+
+### Fixed
+
+- More chestpiece hoods (e.g. Black Knife) not being hidden in first person.
+- FOV correction applying to the crosshair.
+
 ## [0.1.2] 2026-01-12
 
 ### Added
