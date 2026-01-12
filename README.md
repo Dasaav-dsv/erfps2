@@ -1,3 +1,5 @@
+![Discord](https://img.shields.io/discord/1011219400772309062?label=Discord)
+
 # [FPS] ELDEN RING First Person Souls (Ver.2)
 
 A ground-up rewrite of the [original first person mod](https://www.nexusmods.com/eldenring/mods/3266) for ELDEN RING.
@@ -27,6 +29,10 @@ me3 launch -g eldenring -p erfps2.me3
 ```
 
 You may edit `erfps2.toml` to your preference. Keep it in the same directory as `erfps2.dll` and do not remove any fields.
+
+## Changelog
+
+[CHANGELOG.md](CHANGELOG.md)
 
 ## Developer quickstart
 
