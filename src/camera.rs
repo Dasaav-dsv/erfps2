@@ -1,4 +1,4 @@
-use std::{ffi::c_void, mem};
+use std::{ffi::c_void, mem, ptr};
 
 use eldenring::{
     cs::{CSCam, CSChrBehaviorDataModule, ChrExFollowCam, PlayerIns},
@@ -139,16 +139,17 @@ pub fn init_camera_update(program: Program) -> eyre::Result<()> {
             .map(mem::forget)
             .unwrap();
 
-        let posture_control_right = program
-            .derva_ptr::<unsafe extern "C" fn(*mut c_void, u8, i32, i32) -> i32>(
-                POSTURE_CONTROL_RIGHT_RVA,
-            );
+        let posture_control_right =
+            program
+                .derva_ptr::<unsafe extern "C" fn(*mut *mut *mut PlayerIns, u8, i32, i32) -> i32>(
+                    POSTURE_CONTROL_RIGHT_RVA,
+                );
 
         HookInstaller::for_function(posture_control_right)
             .enable(true)
             .install(|original| {
                 move |param_1, param_2, param_3, param_4| {
-                    let posture_angle = hand_posture_control().unwrap_or(0);
+                    let posture_angle = hand_posture_control(**param_1).unwrap_or(0);
                     original(param_1, param_2, param_3, param_4) + posture_angle
                 }
             })
@@ -254,11 +255,13 @@ unsafe fn tae700_override(args: &mut [f32; 8]) {
 }
 
 #[cfg_attr(debug_assertions, libhotpatch::hotpatch)]
-unsafe fn hand_posture_control() -> Option<i32> {
+unsafe fn hand_posture_control(some_player: *const PlayerIns) -> Option<i32> {
     let control = CameraControl::lock();
-    let player = PlayerIns::main_player()?;
 
-    if !control.first_person() || player.is_2h() {
+    let main_player = PlayerIns::main_player()?;
+    let is_main_player = ptr::eq(some_player, main_player);
+
+    if !is_main_player || !control.first_person() || main_player.is_2h() {
         return None;
     }
 
