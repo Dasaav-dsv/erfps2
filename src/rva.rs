@@ -1,5 +1,6 @@
-pub const CAMERA_STEP_UPDATE_RVA: u32 = 0x3bc6f0;
+pub const FOLLOW_CAM_FOLLOW_RVA: u32 = 0x3b6f30;
 pub const UPDATE_FOLLOW_CAM_RVA: u32 = 0x3b7670;
+pub const CAMERA_STEP_UPDATE_RVA: u32 = 0x3bc6f0;
 
 pub const GET_DMY_POS_RVA: u32 = 0x3e95e0;
 

@@ -13,9 +13,9 @@ use crate::{
     player::PlayerExt,
     program::Program,
     rva::{
-        CAMERA_STEP_UPDATE_RVA, MMS_UPDATE_CHR_CAM_RVA, POSTURE_CONTROL_RIGHT_RVA,
-        PUSH_TAE700_MODIFIER_RVA, SET_WWISE_LISTENER_RVA, UPDATE_FOLLOW_CAM_RVA,
-        UPDATE_LOCK_TGT_RVA,
+        CAMERA_STEP_UPDATE_RVA, FOLLOW_CAM_FOLLOW_RVA, MMS_UPDATE_CHR_CAM_RVA,
+        POSTURE_CONTROL_RIGHT_RVA, PUSH_TAE700_MODIFIER_RVA, SET_WWISE_LISTENER_RVA,
+        UPDATE_FOLLOW_CAM_RVA, UPDATE_LOCK_TGT_RVA,
     },
 };
 
@@ -68,6 +68,28 @@ pub fn init_camera_update(program: Program) -> eyre::Result<()> {
             .install(move |original| {
                 move |param_1| {
                     log_unwind!(update_chr_follow_cam(&mut *param_1, &|| original(param_1)))
+                }
+            })
+            .map(mem::forget)
+            .unwrap();
+
+        let follow_cam_follow = program
+            .derva_ptr::<unsafe extern "C" fn(*mut ChrExFollowCam, f32, *mut c_void)>(
+                FOLLOW_CAM_FOLLOW_RVA,
+            );
+
+        HookInstaller::for_function(follow_cam_follow)
+            .enable(true)
+            .install(move |original| {
+                move |param_1, param_2, param_3| {
+                    // Setting this flag disables position interpolation for the camera attach
+                    // point in the function below.
+                    let first_person = CameraControl::lock().first_person();
+                    let reset_camera = mem::replace(&mut (*param_1).reset_camera, first_person);
+
+                    original(param_1, param_2, param_3);
+
+                    (*param_1).reset_camera = reset_camera;
                 }
             })
             .map(mem::forget)
