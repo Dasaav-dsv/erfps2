@@ -37,7 +37,7 @@ pub struct CameraState {
 
     pub trans_time: f32,
 
-    pub angle_limit: f32,
+    pub angle_limit: [f32; 2],
 
     pub use_stabilizer: bool,
 
@@ -152,8 +152,8 @@ impl CameraState {
             if first_person {
                 let angle_limit = mem::replace(&mut follow_cam.angle_limit, self.angle_limit);
 
-                if angle_limit != self.angle_limit {
-                    self.saved_angle_limit = Some(angle_limit);
+                if angle_limit[1] != self.angle_limit[1] {
+                    self.saved_angle_limit = Some(angle_limit[1]);
                 }
 
                 if let Some(player) = PlayerIns::main_player()
@@ -163,7 +163,7 @@ impl CameraState {
                     follow_cam.reset_camera_x = true;
                 }
             } else if let Some(saved_angle_limit) = self.saved_angle_limit.take() {
-                follow_cam.angle_limit = saved_angle_limit;
+                follow_cam.angle_limit[1] = saved_angle_limit;
             }
         }
     }
@@ -414,7 +414,7 @@ impl Default for CameraState {
             fov: const { f32::to_radians(85.0) },
             tpf: const { 1.0 / 60.0 },
             trans_time: 0.0,
-            angle_limit: const { f32::to_radians(50.0) },
+            angle_limit: const { [f32::to_radians(-80.0), f32::to_radians(70.0)] },
             stabilizer_window: 0.3,
             stabilizer_factor: 0.8,
             use_stabilizer: true,
