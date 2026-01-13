@@ -288,16 +288,27 @@ impl CameraContext {
             );
         }
 
-        let y_offset = Vec3::new(0.0, 1.0, 0.0);
-        let z_offset = Vec4::from(head_pos.2)
-            .with_y(0.0)
-            .truncate()
-            .normalize_or_zero();
-
-        new_head_pos += y_offset * state.in_head_offset_y + z_offset * state.in_head_offset_z;
+        new_head_pos += Vec4::from(head_pos.1).truncate() * -0.1;
         head_pos.3 = new_head_pos.extend(1.0).into();
 
-        head_pos
+        let mut camera_pos = if self.player.is_on_ladder() || self.player.is_in_throw() {
+            head_pos
+        } else {
+            F32ViewMatrix::new(
+                self.chr_cam.pers_cam.matrix.0,
+                self.chr_cam.pers_cam.matrix.1,
+                self.chr_cam.pers_cam.matrix.2,
+                head_pos.3,
+            )
+        };
+
+        let y_offset = Vec4::from(camera_pos.1) * state.in_head_offset_y;
+        let z_offset = Vec4::from(camera_pos.2) * state.in_head_offset_z;
+
+        let new_camera_pos = Vec4::from(camera_pos.3) + y_offset + z_offset;
+        camera_pos.3 = new_camera_pos.into();
+
+        camera_pos
     }
 
     pub fn update_cs_cam(&mut self, state: &mut CameraState) {
@@ -342,12 +353,8 @@ impl CameraContext {
 
         let camera_pos = self.camera_position(state);
 
-        if self.player.is_on_ladder() || self.player.is_in_throw() {
-            self.cs_cam.pers_cam_1.matrix = camera_pos;
-            self.chr_cam.pers_cam.matrix = camera_pos;
-        }
-
-        self.chr_cam.pers_cam.matrix.3 = camera_pos.3;
+        self.cs_cam.pers_cam_1.matrix = camera_pos;
+        self.chr_cam.pers_cam.matrix = camera_pos;
 
         let mut fov = state.fov;
         if self.player.chr_flags1c5.precision_shooting() {
@@ -424,8 +431,8 @@ impl Default for CameraState {
             use_barrel_correction: false,
             correction_strength: 0.5,
             saved_angle_limit: None,
-            in_head_offset_y: 0.015,
-            in_head_offset_z: -0.02,
+            in_head_offset_y: 0.07,
+            in_head_offset_z: 0.0,
         }
     }
 }
