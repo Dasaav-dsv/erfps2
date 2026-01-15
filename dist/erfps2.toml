@@ -17,6 +17,10 @@ fov_correction = "fisheye"
 # Possible value range: 0.0 - 1.0
 fov_correction_strength = 0.55
 
+[gameplay]
+# Some animations (like attacks) allow for freer directional movement in first person.
+unlocked_movement = true
+
 [stabilizer]
 # Stabilization of camera movement in first person.
 enabled = true

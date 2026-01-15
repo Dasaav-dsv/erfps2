@@ -8,6 +8,7 @@ use eldenring::{
     fd4::FD4Time,
 };
 use fromsoftware_shared::{F32Vector4, F32ViewMatrix};
+use glam::{Vec4, Vec4Swizzles};
 use winhook::HookInstaller;
 
 use crate::{
@@ -318,19 +319,25 @@ unsafe fn root_motion_modifier(
 
     if !is_main_player
         || !CameraControl::scope_mut(|control| {
-            let context = control.first_person().then(|| control.state_and_context());
+            let unlocked_movement = control.unlocked_movement && control.first_person();
+            let context = unlocked_movement.then(|| control.state_and_context());
             matches!(context, Some((_, Some(context))) if context.has_state("Attack_SM"))
         })
     {
         return None;
     }
 
-    Some(F32Vector4(
-        root_motion.0 * 4.0,
-        root_motion.1 * 4.0,
-        root_motion.2 * 4.0,
-        root_motion.3,
-    ))
+    let movement_dir = -Vec4::from(main_player.chr_ctrl.input_move_dir).zx();
+    let movement_magnitude = movement_dir.length();
+
+    if movement_magnitude < 0.01 {
+        return None;
+    }
+
+    let scaled_root_motion = Vec4::from(root_motion).truncate() * movement_magnitude * 1.25;
+    let directional_root_motion = scaled_root_motion.rotate_y(movement_dir.to_angle());
+
+    Some(directional_root_motion.extend(1.0).into())
 }
 
 #[cfg_attr(debug_assertions, libhotpatch::hotpatch)]

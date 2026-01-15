@@ -38,6 +38,8 @@ pub struct CameraState {
 
     pub angle_limit: [f32; 2],
 
+    pub unlocked_movement: bool,
+
     pub use_stabilizer: bool,
 
     pub stabilizer_window: f32,
@@ -438,6 +440,7 @@ impl Default for CameraState {
             tpf: const { 1.0 / 60.0 },
             trans_time: 0.0,
             angle_limit: const { [f32::to_radians(-80.0), f32::to_radians(70.0)] },
+            unlocked_movement: true,
             stabilizer_window: 0.3,
             stabilizer_factor: 0.8,
             use_stabilizer: true,
@@ -467,6 +470,8 @@ impl From<&Config> for CameraState {
         }
 
         state.correction_strength = config.fov.fov_correction_strength;
+
+        state.unlocked_movement = config.gameplay.unlocked_movement;
 
         state.use_stabilizer = config.stabilizer.enabled;
         state.stabilizer_window = config.stabilizer.smoothing_window.clamp(0.1, 1.0);

@@ -5,6 +5,7 @@ pub mod updater;
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub fov: Fov,
+    pub gameplay: Gameplay,
     pub stabilizer: Stabilizer,
     pub crosshair: Crosshair,
 }
@@ -14,6 +15,11 @@ pub struct Fov {
     pub horizontal_fov: f32,
     pub fov_correction: FovCorrection,
     pub fov_correction_strength: f32,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Gameplay {
+    pub unlocked_movement: bool,
 }
 
 #[derive(Debug, Deserialize)]
