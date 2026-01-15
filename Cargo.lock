@@ -231,6 +231,7 @@ dependencies = [
  "glam",
  "libhotpatch",
  "log",
+ "pelite",
  "serde",
  "simplelog",
  "toml",

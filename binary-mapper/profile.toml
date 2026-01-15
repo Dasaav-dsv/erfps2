@@ -1,0 +1,71 @@
+[[patterns]]
+pattern = "48 8b 0d ? ? ? ? 4d 8b cd 4d 8b c4 48 8b d7 e8 $ { ' } eb"
+captures = ["", "ADD_PIXEL_SHADER_RVA"]
+
+[[patterns]]
+pattern = "48 8d 05 ? ? ? ? 48 89 05 ? ? ? ? 48 8d 05 ? ? ? ? 48 89 05 ? ? ? ? 48 8d 05 $ { ' 48 89 5c 24 08 57 48 83 ec 30 f3 0f ? ? ? ? 9a 03 48 8b fa 0f 29 74 24 20 48 8b d9 0f 57 f6 0f 2e c6 }"
+captures = ["", "CAMERA_STEP_UPDATE_RVA"]
+
+[[patterns]]
+pattern = "0f b6 43 0d 88 05 $ { ' } 0f b6 43 10"
+captures = ["", "CAM_WALL_RECOVERY_RVA"]
+
+[[patterns]]
+pattern = "66 0f 7f 8d a0 00 00 00 4c 8b 44 24 70"
+captures = ["CB_FISHEYE_HOOK_RVA"]
+
+[[patterns]]
+pattern = "4c 8b 8b 90 03 00 00 4c 8d 83 d0 00 00 00 48 8d 54 24 40 48 8b cb e8 $ { ' }"
+captures = ["", "CHR_ROOT_MOTION_RVA"]
+
+[[patterns]]
+pattern = "4d 8b c6 41 0f 28 cf 48 8b ce e8 $ { ' } 0f b6 86 10 03 00 00"
+captures = ["", "FOLLOW_CAM_FOLLOW_RVA"]
+
+[[patterns]]
+pattern = "8b 80 4c 01 00 00 44 8b c0 49 8b d5 48 8b cb e8 $ { ' }"
+captures = ["", "GET_BEH_GRAPH_DATA_RVA"]
+
+[[patterns]]
+pattern = "48 8d 44 24 40 48 89 44 24 28 41 8b 00 89 44 24 40 4c 8d 44 24 40 49 8b ca e8 $ { ' }"
+captures = ["", "GET_DMY_POS_RVA"]
+
+[[patterns]]
+pattern = "f3 44 0f 10 5c 9e 3c f3 44 0f 10 54 9e 40"
+captures = ["GX_FFX_DRAW_CONTEXT_RVA"]
+
+[[patterns]]
+pattern = "48 8b 46 08 48 8b d7 48 8b 88 48 04 00 00 e8 $ { ' }"
+captures = ["", "GX_FFX_DRAW_PASS_RVA"]
+
+[[patterns]]
+pattern = "48 8b d9 48 8b fa 48 8b 49 58 e8 ? ? ? ? 48 8b 8b 90 01 00 00 48 8b 99 e8 00 00 00 48 8b cb e8 $ { ' }"
+captures = ["", "IS_CHR_RIDING_RVA"]
+
+[[patterns]]
+pattern = "48 8b cb e8 $ { ' } f3 0f 10 4f 08 48 8b cb e8 ? ? ? ? f3 0f 10 4f 08 48 8b cb e8 ? ? ? ? 48 8b cb e8"
+captures = ["", "MMS_UPDATE_CHR_CAM_RVA"]
+
+[[patterns]]
+pattern = "40 88 7c 24 20 45 8b cd 45 8b c4 41 0f b6 d7 48 8d 4d d7 e8 $ { ' } 8b d8 45 8b cd 45 8b c4 41 0f b6 d7 48 8d 4c 24 30 e8"
+captures = ["", "POSTURE_CONTROL_RIGHT_RVA"]
+
+[[patterns]]
+pattern = "4c 89 44 24 50 e8 ? ? ? ? 84 c0 75 0d 48 8d 54 24 20 48 8b cb e8 $ { ' } 48 83 c4 60 5b c3"
+captures = ["", "PUSH_TAE700_MODIFIER_RVA"]
+
+[[patterns]]
+pattern = "e8 $ { ' } 48 8b 0d ? ? ? ? 48 8b 74 24 40 48 8b 5c 24 30 48 85 c9 74"
+captures = ["", "SET_WWISE_LISTENER_RVA"]
+
+[[patterns]]
+pattern = "48 8b ce 40 88 be 88 04 00 00 e8 $ { ' } 0f 10 86 20 01 00 00"
+captures = ["", "UPDATE_FOLLOW_CAM_RVA"]
+
+[[patterns]]
+pattern = "48 8b 0d ? ? ? ? 0f 28 ce e8 $ { ' } 48 8b 8d e8 e5 01 00 e8"
+captures = ["", "UPDATE_LOCK_TGT_RVA"]
+
+[[patterns]]
+pattern = "48 8b 81 60 10 00 00 48 8b 89 68 10 00 00 48 3b c1 74 0e"
+captures = ["USES_DITHERING_RVA"]

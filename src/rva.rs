@@ -1,29 +1,62 @@
-pub const FOLLOW_CAM_FOLLOW_RVA: u32 = 0x3b6f30;
-pub const UPDATE_FOLLOW_CAM_RVA: u32 = 0x3b7670;
-pub const CAMERA_STEP_UPDATE_RVA: u32 = 0x3bc6f0;
+use std::{ops::Deref, sync::LazyLock};
 
-pub const GET_DMY_POS_RVA: u32 = 0x3e95e0;
+use eldenring::version::GameVersion;
 
-pub const POSTURE_CONTROL_RIGHT_RVA: u32 = 0x40fef0;
+use crate::program::Program;
 
-pub const PUSH_TAE700_MODIFIER_RVA: u32 = 0x416d40;
+mod jp;
+mod ww;
 
-pub const CHR_ROOT_MOTION_RVA: u32 = 0x466e20;
-pub const IS_CHR_RIDING_RVA: u32 = 0x474900;
+#[derive(Clone, Copy, Debug)]
+pub struct Rva {
+    ww: u32,
+    jp: u32,
+}
 
-pub const UPDATE_LOCK_TGT_RVA: u32 = 0x716360;
-pub const MMS_UPDATE_CHR_CAM_RVA: u32 = 0xb02480;
+impl Rva {
+    const fn new(ww: u32, jp: u32) -> Self {
+        Self { ww, jp }
+    }
+}
 
-pub const ADD_PIXEL_SHADER_RVA: u32 = 0xb7a990;
+impl Deref for Rva {
+    type Target = u32;
 
-pub const SET_WWISE_LISTENER_RVA: u32 = 0xda9400;
+    fn deref(&self) -> &Self::Target {
+        static GAME_VERSION: LazyLock<GameVersion> = LazyLock::new(|| {
+            let program = Program::current();
+            GameVersion::detect(&program.into())
+                .expect("this game version is not supported; expected ELDEN RING 1.16.1")
+        });
 
-pub const GET_BEH_GRAPH_DATA_RVA: u32 = 0x1446b10;
+        match *GAME_VERSION {
+            GameVersion::Ww261 => &self.ww,
+            GameVersion::Jp2611 => &self.jp,
+        }
+    }
+}
 
-pub const USES_DITHERING_RVA: u32 = 0x1a679e0;
-pub const CB_FISHEYE_HOOK_RVA: u32 = 0x1b91353;
+macro_rules! rva {
+    ($i:ident) => {
+        pub const $i: Rva = Rva::new(ww::$i, jp::$i);
+    };
+}
 
-pub const GX_FFX_DRAW_PASS_RVA: u32 = 0x1d21250;
-pub const GX_FFX_DRAW_CONTEXT_RVA: u32 = 0x1d34fa5;
-
-pub const CAM_WALL_RECOVERY_RVA: u32 = 0x3b15c80;
+rva!(ADD_PIXEL_SHADER_RVA);
+rva!(CAMERA_STEP_UPDATE_RVA);
+rva!(CAM_WALL_RECOVERY_RVA);
+rva!(CB_FISHEYE_HOOK_RVA);
+rva!(CHR_ROOT_MOTION_RVA);
+rva!(FOLLOW_CAM_FOLLOW_RVA);
+rva!(GET_BEH_GRAPH_DATA_RVA);
+rva!(GET_DMY_POS_RVA);
+rva!(GX_FFX_DRAW_CONTEXT_RVA);
+rva!(GX_FFX_DRAW_PASS_RVA);
+rva!(IS_CHR_RIDING_RVA);
+rva!(MMS_UPDATE_CHR_CAM_RVA);
+rva!(POSTURE_CONTROL_RIGHT_RVA);
+rva!(PUSH_TAE700_MODIFIER_RVA);
+rva!(SET_WWISE_LISTENER_RVA);
+rva!(UPDATE_FOLLOW_CAM_RVA);
+rva!(UPDATE_LOCK_TGT_RVA);
+rva!(USES_DITHERING_RVA);
