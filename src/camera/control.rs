@@ -357,7 +357,12 @@ impl CameraContext {
 
     pub fn update_chr_cam(&mut self, state: &CameraState) {
         let first_person = state.first_person();
-        state.set_crosshair_if(first_person && !self.lock_tgt.is_locked_on);
+
+        state.set_crosshair_if(
+            first_person
+                && !self.lock_tgt.is_locked_on
+                && !self.player.chr_flags1c5.precision_shooting(),
+        );
 
         if !first_person {
             return;
