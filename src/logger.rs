@@ -23,11 +23,8 @@ pub fn init() {
 }
 
 pub fn try_init() -> eyre::Result<()> {
-    let log_file = File::options()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open(LOG_FILE)?;
+    let _ = File::options().write(true).truncate(true).open(LOG_FILE);
+    let log_file = File::options().append(true).create(true).open(LOG_FILE)?;
 
     WriteLogger::init(
         level_from_env("RUST_LOG", LevelFilter::Info),
