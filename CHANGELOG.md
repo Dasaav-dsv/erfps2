@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.7] 2026-01-16
+
+### Added
+
+- Support for executable version 1.16.1.1 (Japanese game distribution).
+- `gameplay.start_in_first_person` erfps2.toml key.
+- `gameplay.prioritize_lock_on` erfps2.toml key.
+
+### Changed
+
+- Errors now bring up a native pop-up window.
+
+### Fixed
+
+- Crosshair not disappearing when zooming with a bow.
+
 ## [0.1.6] 2026-01-15
 
 ### Added
