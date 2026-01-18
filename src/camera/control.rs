@@ -217,7 +217,7 @@ impl CameraState {
                 ..config.into()
             };
 
-            self.update_fov_correction();
+            self.update_fov_correction(self.fov);
         }
 
         let world_chr_man = unsafe { WorldChrMan::instance().ok()? };
@@ -243,12 +243,12 @@ impl CameraState {
         })
     }
 
-    fn update_fov_correction(&self) {
+    fn update_fov_correction(&self, fov: f32) {
         enable_fov_correction(
             self.first_person && self.use_fov_correction,
             self.correction_strength,
             self.use_barrel_correction,
-            self.fov,
+            fov,
         );
     }
 
@@ -282,7 +282,7 @@ impl CameraContext {
 
             self.lock_tgt.is_lock_on_requested = false;
 
-            state.update_fov_correction();
+            state.update_fov_correction(self.fov(state));
 
             let first_person = state.first_person();
 
