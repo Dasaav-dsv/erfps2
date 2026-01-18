@@ -82,6 +82,13 @@ pub struct PersistentCameraContext {
     behavior_states: BehaviorStates,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BehaviorState {
+    Attack,
+    Evasion,
+    Gesture,
+}
+
 #[repr(C)]
 #[fromsoftware_shared::singleton("LockTgtMan")]
 pub struct LockTgtMan {
@@ -103,7 +110,7 @@ struct HeadTracker {
 }
 
 struct BehaviorStates {
-    state_names: Vec<Box<str>>,
+    state_names: Vec<BehaviorState>,
     erase_index: usize,
 }
 
@@ -330,7 +337,7 @@ impl CameraContext {
         new_head_pos += Vec4::from(head_pos.1).truncate() * -0.1;
         head_pos.3 = new_head_pos.extend(1.0).into();
 
-        let tracking_rotation = if (state.track_dodges && (self.has_state("Evasion_SM")))
+        let tracking_rotation = if (state.track_dodges && (self.has_state(BehaviorState::Evasion)))
             || self.player.is_in_throw()
         {
             self.head_tracker.next_tracked(frame, head_pos.rotation())
@@ -358,9 +365,7 @@ impl CameraContext {
 
         let camera_pos = self.camera_position(state);
 
-        if !self.lock_tgt.is_locked_on
-        // && !self.player.is_on_ladder() && !self.player.is_in_throw()
-        {
+        if !self.lock_tgt.is_locked_on {
             let lock_on_pos =
                 Vec4::from(camera_pos.3) + Vec4::from(self.chr_cam.pers_cam.matrix.2) * 10.0;
             self.player.set_lock_on_target_position(lock_on_pos);
@@ -422,12 +427,12 @@ impl CameraContext {
         f32::tan(state.fov.atan() * width_ratio)
     }
 
-    pub fn push_state(&mut self, state: &str) {
+    pub fn push_state(&mut self, state: BehaviorState) {
         self.behavior_states.push_state(state);
     }
 
-    pub fn has_state(&self, name: &str) -> bool {
-        self.behavior_states.has_state(name)
+    pub fn has_state(&self, state: BehaviorState) -> bool {
+        self.behavior_states.has_state(state)
     }
 }
 
@@ -525,17 +530,36 @@ impl BehaviorStates {
         }
     }
 
-    fn has_state(&self, name: &str) -> bool {
-        self.state_names.iter().any(|state| &**state == name)
+    fn has_state(&self, state: BehaviorState) -> bool {
+        self.state_names.contains(&state)
     }
 
-    fn push_state(&mut self, state: &str) {
-        self.state_names.push(state.into());
+    fn push_state(&mut self, state: BehaviorState) {
+        self.state_names.push(state);
     }
 
     fn next_frame(&mut self) {
         self.state_names.drain(..self.erase_index);
         self.erase_index = self.state_names.len();
+    }
+}
+
+impl BehaviorState {
+    pub fn into_state_name(self) -> &'static str {
+        match self {
+            Self::Attack => "Attack_SM",
+            Self::Evasion => "Evasion_SM",
+            Self::Gesture => "Gesture_SM",
+        }
+    }
+
+    pub fn try_from_state_name(name: &str) -> Option<Self> {
+        match name {
+            "Attack_SM" => Some(Self::Attack),
+            "Evasion_SM" => Some(Self::Evasion),
+            "Gesture_SM" => Some(Self::Gesture),
+            _ => None,
+        }
     }
 }
 
@@ -629,3 +653,17 @@ impl DerefMut for CameraContext {
 unsafe impl Send for CameraContext {}
 
 unsafe impl Sync for CameraContext {}
+
+impl From<BehaviorState> for &'static str {
+    fn from(value: BehaviorState) -> Self {
+        value.into_state_name()
+    }
+}
+
+impl TryFrom<&'_ str> for BehaviorState {
+    type Error = ();
+
+    fn try_from(name: &'_ str) -> Result<Self, Self::Error> {
+        Self::try_from_state_name(name).ok_or(())
+    }
+}

@@ -11,7 +11,7 @@ use fromsoftware_shared::{F32Vector4, F32ViewMatrix};
 use glam::{Vec4, Vec4Swizzles};
 
 use crate::{
-    camera::control::CameraControl,
+    camera::control::{BehaviorState, CameraControl},
     hook, log_unwind,
     player::PlayerExt,
     program::Program,
@@ -219,7 +219,7 @@ unsafe fn update_lock_tgt(original: &dyn Fn()) {
             && !context.player.is_riding()
             && !context.player.has_action_request()
             && !context.player.is_in_throw()
-            && !context.has_state("Gesture_SM")
+            && !context.has_state(BehaviorState::Gesture)
         {
             context.player.set_lock_on(true);
         }
@@ -288,7 +288,7 @@ unsafe fn root_motion_modifier(
         || !CameraControl::scope_mut(|control| {
             let unlocked_movement = control.unlocked_movement && control.first_person();
             let context = unlocked_movement.then(|| control.state_and_context());
-            matches!(context, Some((_, Some(context))) if context.has_state("Attack_SM"))
+            matches!(context, Some((_, Some(context))) if context.has_state(BehaviorState::Attack))
         })
     {
         return None;
@@ -327,8 +327,10 @@ unsafe fn update_player_behavior_state(state_machine: *mut c_void, behavior_grap
             && let Ok(name) = unsafe { CStr::from_ptr(name).to_str() }
         {
             CameraControl::scope_mut(|control| {
-                if let (_, Some(context)) = control.state_and_context() {
-                    context.push_state(name);
+                if let (_, Some(context)) = control.state_and_context()
+                    && let Ok(state) = BehaviorState::try_from(name)
+                {
+                    context.push_state(state);
                 }
             });
         }
