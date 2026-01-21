@@ -21,11 +21,15 @@ fov_correction_strength = 0.55
 # When starting up the game and loading a character the camera will start out in first person.
 start_in_first_person = true
 
-# Some animations (like attacks) allow for freer directional movement in first person.
-unlocked_movement = true
+# Locking on to enemies in first person does not restrict camera movement.
+# The default "hard" lock on aims the camera at the targeted enemy.
+soft_lock_on = false
 
 # When an enemy is on screen lock on will be prioritized to switching perspectives.
 prioritize_lock_on = true
+
+# Some animations (like attacks) allow for freer directional movement in first person.
+unlocked_movement = true
 
 # The player's body is made transparent during dodges, improving visibility.
 unobtrusive_dodges = false

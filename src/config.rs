@@ -20,8 +20,9 @@ pub struct Fov {
 #[derive(Debug, Deserialize)]
 pub struct Gameplay {
     pub start_in_first_person: bool,
-    pub unlocked_movement: bool,
     pub prioritize_lock_on: bool,
+    pub soft_lock_on: bool,
+    pub unlocked_movement: bool,
     pub unobtrusive_dodges: bool,
     pub track_dodges: bool,
     pub restricted_sprint: bool,

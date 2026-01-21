@@ -39,17 +39,19 @@ pub struct CameraState {
 
     pub angle_limit: [f32; 2],
 
-    pub unlocked_movement: bool,
+    pub soft_lock_on: bool,
 
     pub prioritize_lock_on: bool,
 
-    pub use_stabilizer: bool,
+    pub unlocked_movement: bool,
 
     pub unobtrusive_dodges: bool,
 
     pub track_dodges: bool,
 
     pub restricted_sprint: bool,
+
+    pub use_stabilizer: bool,
 
     pub stabilizer_window: f32,
 
@@ -96,6 +98,8 @@ pub struct LockTgtMan {
     unk00: [u8; 0x2830],
     pub is_locked_on: bool,
     pub is_lock_on_requested: bool,
+    unk2832: [u8; 0x15b],
+    pub lock_camera: bool,
 }
 
 struct CameraStabilizer {
@@ -304,6 +308,7 @@ impl CameraContext {
 
             if !first_person {
                 self.player.make_transparent(false);
+                self.lock_tgt.lock_camera = true;
             }
         }
 
@@ -411,6 +416,10 @@ impl CameraContext {
 
         self.player.enable_face_model(false);
         self.player.enable_sheathed_weapons(false);
+
+        if state.soft_lock_on {
+            self.lock_tgt.lock_camera = false;
+        }
 
         if state.unobtrusive_dodges {
             self.player
@@ -628,14 +637,15 @@ impl Default for CameraState {
             tpf: const { 1.0 / 60.0 },
             trans_time: 0.0,
             angle_limit: const { [f32::to_radians(-80.0), f32::to_radians(70.0)] },
-            unlocked_movement: true,
+            soft_lock_on: false,
             prioritize_lock_on: true,
-            stabilizer_window: 0.3,
-            stabilizer_factor: 0.8,
-            use_stabilizer: true,
+            unlocked_movement: true,
             unobtrusive_dodges: false,
             track_dodges: false,
             restricted_sprint: false,
+            use_stabilizer: true,
+            stabilizer_window: 0.3,
+            stabilizer_factor: 0.8,
             crosshair: CrosshairKind::Cross,
             crosshair_scale: (1.0, 1.0),
             use_fov_correction: true,
@@ -662,8 +672,9 @@ impl From<&Config> for CameraState {
         state.correction_strength = config.fov.fov_correction_strength;
 
         state.should_transition = config.gameplay.start_in_first_person;
-        state.unlocked_movement = config.gameplay.unlocked_movement;
+        state.soft_lock_on = config.gameplay.soft_lock_on;
         state.prioritize_lock_on = config.gameplay.prioritize_lock_on;
+        state.unlocked_movement = config.gameplay.unlocked_movement;
         state.unobtrusive_dodges = config.gameplay.unobtrusive_dodges;
         state.track_dodges = config.gameplay.track_dodges;
         state.restricted_sprint = config.gameplay.restricted_sprint;
