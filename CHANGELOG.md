@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.10] 2026-01-21
+
+### Added
+
+- "Soft" lock on option where camera movement is not restricted to the locked on target.
+- Forward-only sprint option, which prevents sprinting in other directions in first person.
+- `gameplay.soft_lock_on` erfps2.toml key.
+- `gameplay.restricted_sprint` erfps2.toml key.
+
+### Changed
+
+- Sheathed weapons are now hidden (including on horseback) to prevent collisions with the camera.
+
 ## [0.1.9] 2026-01-18
 
 ### Added
