@@ -5,7 +5,7 @@
 [fov]
 # Horizontal field of view (in degrees) in first person.
 # Possible value range: 45.0 - 130.0
-horizontal_fov = 85.0
+horizontal_fov = 90.0
 
 # Correction of distortion caused by high FOV.
 # These options reduce FOV distortion and may improve depth perception in first person.
