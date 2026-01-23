@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.11] 2026-01-21
+
+### Added
+
+- `"angled"` `crosshair.kind` in erfps2.toml.
+- `fov.fov_correction_cylindricity` erfps2.toml key.
+
+### Changed
+
+- Default `fov.fov_correction` to `"barrel"`.
+- Default `fov.horizontal_fov` to 90.
+
+### Fixed
+
+- Barrel distortion FOV correction shader.
+- Player's facing direction in soft lock on mode.
+- Visibility of dual wield weapons (e.g. Ornamental Straight Swords) in first person.
+- Sudden hand posture adjustments when two-handing dual wield weapons.
+
 ## [0.1.10] 2026-01-21
 
 ### Added
