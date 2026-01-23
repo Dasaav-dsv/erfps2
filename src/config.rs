@@ -15,6 +15,7 @@ pub struct Fov {
     pub horizontal_fov: f32,
     pub fov_correction: FovCorrection,
     pub fov_correction_strength: f32,
+    pub fov_correction_cylindricity: f32,
 }
 
 #[derive(Debug, Deserialize)]

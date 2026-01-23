@@ -17,6 +17,11 @@ fov_correction = "fisheye"
 # Possible value range: 0.0 - 1.0
 fov_correction_strength = 0.55
 
+# The aspect ratio correction strength for "barrel" fov_correction.
+# Larger values reduce horizontal stretch and increase vertical stretch.
+# Possible value range: 0.0 - 1.0
+fov_correction_cylindricity = 1.0
+
 [gameplay]
 # When starting up the game and loading a character the camera will start out in first person.
 start_in_first_person = true

@@ -79,12 +79,10 @@ float2 MapUvFisheye(float2 uv)
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 float2 MapUvBarrel(float2 uv)
 {
-    float strength = g_ErfpsCorrectParam.x;
-    float height = g_ErfpsCorrectParam.y * g_vCameraParam.y;
     float aspectRatio = g_vCameraParam.x;
-    float cylindricalRatio = 1.0;
+    float cylindricalRatio = g_ErfpsCorrectParam.x;
 
-    float scaledHeight = strength * height;
+    float scaledHeight = g_ErfpsCorrectParam.y * g_vCameraParam.y;
     float cylAspectRatio = aspectRatio * cylindricalRatio;
     float aspectDiagSq = aspectRatio * aspectRatio + 1.0;
     float diagSq = scaledHeight * scaledHeight * aspectDiagSq;

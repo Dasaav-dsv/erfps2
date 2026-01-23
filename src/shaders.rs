@@ -69,17 +69,28 @@ static SHADER_FLAGS: AtomicU32 = AtomicU32::new(0);
 static SHADER_PARAMS: AtomicU64 = AtomicU64::new(0);
 static SHADER_PARAMS2: AtomicU64 = AtomicU64::new(0);
 
-pub fn enable_fov_correction(state: bool, strength: f32, use_barrel: bool, vfov: f32) {
+pub fn enable_fov_correction(
+    state: bool,
+    strength: f32,
+    cylindricity: f32,
+    use_barrel: bool,
+    vfov: f32,
+) {
     let state = state && strength > 0.05;
 
     set_shader_flag(state, 0);
     set_shader_flag(use_barrel, 1);
 
     if state {
-        let strength = strength.to_bits() as u64;
-        let width_ratio = f32::tan(vfov * 0.5).to_bits() as u64;
+        let cylindricity = cylindricity.to_bits() as u64;
 
-        SHADER_PARAMS.store(strength | (width_ratio << 32), Ordering::Relaxed);
+        let strength_width_ratio = strength * f32::tan(vfov * 0.5);
+        let strength_width_ratio = strength_width_ratio.to_bits() as u64;
+
+        SHADER_PARAMS.store(
+            cylindricity | (strength_width_ratio << 32),
+            Ordering::Relaxed,
+        );
     }
 }
 

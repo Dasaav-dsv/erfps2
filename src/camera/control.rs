@@ -67,6 +67,8 @@ pub struct CameraState {
 
     pub correction_strength: f32,
 
+    pub correction_cylindricity: f32,
+
     pub saved_angle_limit: Option<f32>,
 }
 
@@ -259,6 +261,7 @@ impl CameraState {
         enable_fov_correction(
             self.first_person && self.use_fov_correction,
             self.correction_strength,
+            self.correction_cylindricity,
             self.use_barrel_correction,
             fov,
         );
@@ -651,6 +654,7 @@ impl Default for CameraState {
             use_fov_correction: true,
             use_barrel_correction: false,
             correction_strength: 0.5,
+            correction_cylindricity: 1.0,
             saved_angle_limit: None,
         }
     }
@@ -669,8 +673,6 @@ impl From<&Config> for CameraState {
             FovCorrection::Barrel => state.use_barrel_correction = true,
         }
 
-        state.correction_strength = config.fov.fov_correction_strength;
-
         state.should_transition = config.gameplay.start_in_first_person;
         state.soft_lock_on = config.gameplay.soft_lock_on;
         state.prioritize_lock_on = config.gameplay.prioritize_lock_on;
@@ -686,6 +688,10 @@ impl From<&Config> for CameraState {
         state.crosshair = config.crosshair.kind;
         state.crosshair_scale.0 = config.crosshair.scale_x.clamp(0.1, 4.0);
         state.crosshair_scale.1 = config.crosshair.scale_y.clamp(0.1, 4.0);
+
+        state.correction_strength = config.fov.fov_correction_strength.clamp(0.0, 1.0);
+        state.correction_cylindricity =
+            config.fov.fov_correction_cylindricity.clamp(0.0, 1.0) * 1.5 + 0.5;
 
         state
     }
