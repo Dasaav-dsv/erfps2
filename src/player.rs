@@ -3,11 +3,11 @@ use eldenring::{
         CSModelIns, ChrAsmArmStyle, ChrIns, ChrMovementLimit, PlayerIns, ThrowNodeState,
         WorldChrMan,
     },
+    fd4::FD4ParamRepository,
     param::EQUIP_PARAM_WEAPON_ST,
 };
 use fromsoftware_shared::{F32ModelMatrix, F32Vector4, F32ViewMatrix, FromStatic, OwnedPtr};
 use glam::{Vec3, Vec4, Vec4Swizzles};
-use pmod::param::ParamRepository;
 
 use crate::{program::Program, rva::GET_DMY_POS_RVA};
 
@@ -239,9 +239,11 @@ impl PlayerExt for PlayerIns {
         let lh_slot = chr_asm.equipment.selected_slots.left_weapon_slot * 2;
         let lh_weapon_param_id = chr_asm.equipment_param_ids[lh_slot as usize];
 
-        ParamRepository::get_row("EquipParamWeapon", lh_weapon_param_id / 100 * 100)
-            .map(|row| unsafe { row.cast::<EQUIP_PARAM_WEAPON_ST>().as_ref() })
-            .ok()
+        unsafe {
+            FD4ParamRepository::instance()
+                .ok()?
+                .get(lh_weapon_param_id as u32)
+        }
     }
 
     fn rh_weapon_param(&self) -> Option<&'static EQUIP_PARAM_WEAPON_ST> {
@@ -250,9 +252,11 @@ impl PlayerExt for PlayerIns {
         let rh_slot = chr_asm.equipment.selected_slots.right_weapon_slot * 2 + 1;
         let rh_weapon_param_id = chr_asm.equipment_param_ids[rh_slot as usize];
 
-        ParamRepository::get_row("EquipParamWeapon", rh_weapon_param_id / 100 * 100)
-            .map(|row| unsafe { row.cast::<EQUIP_PARAM_WEAPON_ST>().as_ref() })
-            .ok()
+        unsafe {
+            FD4ParamRepository::instance()
+                .ok()?
+                .get(rh_weapon_param_id as u32)
+        }
     }
 }
 

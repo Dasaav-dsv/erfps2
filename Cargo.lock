@@ -154,15 +154,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cxx-stl"
-version = "4.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e42cf6d86f92c165eaf2d4afa54382ec9b8d1cdef39f4265bc938cd055198f83"
-dependencies = [
- "cstl-sys",
-]
-
-[[package]]
 name = "dataview"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -191,7 +182,7 @@ name = "eldenring"
 version = "0.12.0"
 dependencies = [
  "bitfield",
- "cxx-stl 3.4.0",
+ "cxx-stl",
  "encoding_rs",
  "fromsoftware-shared",
  "glam",
@@ -232,7 +223,6 @@ dependencies = [
  "libhotpatch",
  "log",
  "pelite",
- "pmod",
  "serde",
  "simplelog",
  "toml",
@@ -575,18 +565,6 @@ name = "pin-project-lite"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b3cff922bd51709b605d9ead9aa71031d81447142d828eb4a6eba76fe619f9b"
-
-[[package]]
-name = "pmod"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9c0c4b2c2768c05897f885c700cd32a91350fc3299fc37dd4c5f5c108513a6c"
-dependencies = [
- "cxx-stl 4.4.0",
- "encoding_rs",
- "from-singleton",
- "windows 0.62.2",
-]
 
 [[package]]
 name = "powerfmt"

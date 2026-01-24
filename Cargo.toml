@@ -27,4 +27,3 @@ toml = "0.9.11"
 serde = { version = "1.0.228", features = ["serde_derive"] }
 closure-ffi = "5.0.1"
 pelite = "0.10.0"
-pmod = "0.2.5"
