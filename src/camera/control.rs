@@ -7,8 +7,7 @@ use std::{
 };
 
 use eldenring::cs::{
-    CSActionButtonMan, CSCamera, CSRemo, ChrCam, ChrExFollowCam, GameDataMan, PlayerIns,
-    WorldChrMan,
+    CSActionButtonMan, CSCamera, CSRemo, ChrCam, ChrExFollowCam, GameDataMan, LockTgtMan, PlayerIns, WorldChrMan
 };
 use fromsoftware_shared::{F32ViewMatrix, FromStatic};
 use glam::{EulerRot, Mat3A, Mat4, Quat, Vec3, Vec4};
@@ -94,16 +93,6 @@ pub enum BehaviorState {
     Attack,
     Evasion,
     Gesture,
-}
-
-#[repr(C)]
-#[fromsoftware_shared::singleton("LockTgtMan")]
-pub struct LockTgtMan {
-    unk00: [u8; 0x2830],
-    pub is_locked_on: bool,
-    pub is_lock_on_requested: bool,
-    unk2832: [u8; 0x15b],
-    pub lock_camera: bool,
 }
 
 struct CameraStabilizer {
