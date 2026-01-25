@@ -6,7 +6,7 @@ use std::{
     ptr::{self, NonNull},
 };
 
-use eldenring::cs::{CSHavokMan, CSPhysIns, FieldInsBase, hknpWorld};
+use eldenring::cs::{CSHavokMan, CSPhysIns, FieldInsBase, FieldInsHandle, hknpWorld};
 use fromsoftware_shared::FromStatic;
 use glam::{Mat4, Vec3, Vec3A, Vec4};
 
@@ -218,6 +218,10 @@ impl hknpHit {
     pub fn field_ins(&self) -> Option<NonNull<FieldInsBase>> {
         unsafe { Some(self.body.as_ref()?.as_ref()?.owner) }
     }
+
+    pub fn field_ins_handle(&self) -> Option<FieldInsHandle> {
+        unsafe { Some(self.field_ins()?.as_ref().handle) }
+    }
 }
 
 impl<'a> CustomHitCollector<'a> {
@@ -301,9 +305,7 @@ impl Default for ClosestHitCollector {
 
 impl fmt::Debug for hknpBodyId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("hknpBodyId")
-            .field(&self.index())
-            .finish()
+        f.debug_tuple("hknpBodyId").field(&self.index()).finish()
     }
 }
 

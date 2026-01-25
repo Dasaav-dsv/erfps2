@@ -530,8 +530,7 @@ impl CameraContext {
         });
 
         if let Some(hit) = hit
-            && let Some(field_ins) = hit.field_ins()
-            && let field_ins_handle = unsafe { field_ins.as_ref().handle }
+            && let Some(field_ins_handle) = hit.field_ins_handle()
             && field_ins_handle.selector.field_ins_type() == Some(FieldInsType::Chr)
         {
             self.lock_on_to(field_ins_handle);
