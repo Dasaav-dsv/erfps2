@@ -220,6 +220,7 @@ unsafe fn update_lock_tgt(original: &dyn Fn()) {
             && !context.player.has_action_request()
             && !context.player.is_in_throw()
             && !context.has_state(BehaviorState::Gesture)
+            && context.player.mimicry_asset < 0
         {
             context.player.set_lock_on(true);
         }
