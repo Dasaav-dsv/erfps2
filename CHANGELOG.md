@@ -4,7 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.1.11] 2026-01-21
+## [0.1.12] 2026-01-26
+
+### Added
+
+- Better target detection to `soft_lock_on` mode.
+
+### Fixed
+
+- Instantly losing the Mimic Veil effect when turning the camera in first person.
+- Coded Sword blade not showing up.
+- Lock on reticle and tag displays with FOV correction shaders active.
+- `"fisheye"` FOV correction not using the `fov_correction_strength` config value.
+
+## [0.1.11] 2026-01-23
 
 ### Added
 
