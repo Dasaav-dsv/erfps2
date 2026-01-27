@@ -5,12 +5,12 @@ use windows::{
     core::BOOL,
 };
 
-use crate::{camera::init_camera_update, program::Program, shaders::hook_shaders};
+use crate::{hooks::init_camera_update, program::Program, shaders::hook_shaders};
 
-mod camera;
 mod config;
+mod core;
 mod game;
-mod hook;
+mod hooks;
 mod logger;
 mod player;
 mod program;

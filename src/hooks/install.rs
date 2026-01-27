@@ -1,9 +1,10 @@
 use std::mem;
 
 use closure_ffi::traits::{FnPtr, FnThunk};
-use winhook::{CConv, Error, HookInstaller};
+use winhook::{CConv, HookInstaller};
 
-pub unsafe fn install<F, C, H>(f: F, c: C) -> Result<(), Error>
+#[track_caller]
+pub unsafe fn hook<F, C, H>(f: F, c: C)
 where
     F: FnPtr + CConv + 'static,
     C: FnOnce(F) -> H + 'static,
@@ -15,5 +16,6 @@ where
             .enable(true)
             .install(c)
             .map(mem::forget)
+            .unwrap()
     }
 }

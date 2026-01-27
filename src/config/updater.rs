@@ -3,7 +3,6 @@ use std::{
     fs, io,
     os::windows::ffi::OsStringExt,
     path::{Path, PathBuf},
-    sync::Arc,
     time::{Instant, SystemTime},
 };
 
@@ -23,7 +22,7 @@ use crate::config::Config;
 
 pub struct ConfigUpdater {
     config_path: Box<Path>,
-    config: Result<Config, Arc<io::Error>>,
+    config: Config,
     last_update: Instant,
     last_timestamp: Option<SystemTime>,
 }
@@ -39,7 +38,7 @@ impl ConfigUpdater {
             path.into_boxed_path()
         };
 
-        let config = Self::read_config(&config_path);
+        let config = Self::read_or_default(&config_path);
 
         let last_update = Instant::now();
 
@@ -55,20 +54,27 @@ impl ConfigUpdater {
         })
     }
 
-    pub fn get_or_update(&mut self) -> Result<&Config, Arc<io::Error>> {
-        if self.last_update.elapsed().as_millis() > Self::UPDATE_MS {
-            let timestamp = fs::metadata(&self.config_path).and_then(|meta| meta.modified())?;
-
-            if self.last_timestamp.is_none_or(|last| last != timestamp) {
-                self.config = Self::read_config(&self.config_path);
-                self.last_timestamp = Some(timestamp);
-            }
+    pub fn get_or_update(&mut self) -> &Config {
+        if self.last_update.elapsed().as_millis() > Self::UPDATE_MS
+            && let Ok(timestamp) = fs::metadata(&self.config_path)
+                .inspect_err(Self::report_fs_error)
+                .and_then(|m| m.modified())
+            && self.last_timestamp.is_none_or(|last| last != timestamp)
+        {
+            self.config = Self::read_or_default(&self.config_path);
+            self.last_timestamp = Some(timestamp);
         }
 
-        self.config.as_ref().map_err(Clone::clone)
+        &self.config
     }
 
-    fn read_config(path: &Path) -> Result<Config, Arc<io::Error>> {
+    fn read_or_default(path: &Path) -> Config {
+        Self::try_read(path)
+            .inspect_err(Self::report_fs_error)
+            .unwrap_or_default()
+    }
+
+    fn try_read(path: &Path) -> Result<Config, io::Error> {
         let toml = fs::read_to_string(path)?;
 
         let config = toml::from_str(&toml)
@@ -78,8 +84,14 @@ impl ConfigUpdater {
         Ok(config)
     }
 
+    fn report_fs_error(error: &io::Error) {
+        log::error!(
+            "failed to update config: {error}. Is it placed in the same directory as erfps2.dll?"
+        );
+    }
+
     fn report_toml_error(error: &TomlError) {
-        log::error!("error in {}: {error}", Self::CONFIG_NAME);
+        log::error!("error in config {}: {error}", Self::CONFIG_NAME);
     }
 }
 

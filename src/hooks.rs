@@ -11,8 +11,12 @@ use fromsoftware_shared::{F32Vector4, F32ViewMatrix, FromStatic};
 use glam::{Vec2, Vec3Swizzles, Vec4};
 
 use crate::{
-    camera::control::{BehaviorState, CameraControl},
-    hook, log_unwind,
+    core::{
+        BehaviorState, CoreLogic,
+        world::{Void, World},
+    },
+    hooks::install::hook,
+    log_unwind,
     player::PlayerExt,
     program::Program,
     rva::{
@@ -23,83 +27,77 @@ use crate::{
     shaders::screen::correct_screen_coords,
 };
 
-mod control;
+pub mod install;
 
 pub fn init_camera_update(program: Program) -> eyre::Result<()> {
     unsafe {
         let update = program
             .derva_ptr::<unsafe extern "C" fn(*mut c_void, *const FD4Time)>(CAMERA_STEP_UPDATE_RVA);
 
-        hook::install(update, |original| {
+        hook(update, |original| {
             move |param_1, param_2| {
                 log_unwind!(update_camera((*param_2).time, &|| original(
                     param_1, param_2
-                )));
+                )))
             }
-        })
-        .unwrap();
+        });
 
         let mms_update =
             program.derva_ptr::<unsafe extern "C" fn(*mut c_void)>(MMS_UPDATE_CHR_CAM_RVA);
 
-        hook::install(mms_update, |original| {
+        hook(mms_update, |original| {
             move |param_1| log_unwind!(update_move_map_step(&|| original(param_1)))
-        })
-        .unwrap();
+        });
 
         let lock_tgt_update =
             program.derva_ptr::<unsafe extern "C" fn(*mut c_void, f32)>(UPDATE_LOCK_TGT_RVA);
 
-        hook::install(lock_tgt_update, |original| {
+        hook(lock_tgt_update, |original| {
             move |param_1, param_2| log_unwind!(update_lock_tgt(&|| original(param_1, param_2)))
-        })
-        .unwrap();
+        });
 
         let chr_follow_cam_update =
             program.derva_ptr::<unsafe extern "C" fn(*mut ChrExFollowCam)>(UPDATE_FOLLOW_CAM_RVA);
 
-        hook::install(chr_follow_cam_update, |original| {
+        hook(chr_follow_cam_update, |original| {
             move |param_1| log_unwind!(update_chr_follow_cam(&mut *param_1, &|| original(param_1)))
-        })
-        .unwrap();
+        });
 
         let fe_man_update = program
             .derva_ptr::<unsafe extern "C" fn(*mut c_void, f32, *mut bool, *mut c_void)>(
                 UPDATE_FE_MAN_RVA,
             );
 
-        hook::install(fe_man_update, |original| {
+        hook(fe_man_update, |original| {
             move |param_1, param_2, param_3, param_4| {
                 log_unwind!(update_fe_man());
                 original(param_1, param_2, param_3, param_4);
             }
-        })
-        .unwrap();
+        });
 
         let follow_cam_follow = program
             .derva_ptr::<unsafe extern "C" fn(*mut ChrExFollowCam, f32, *mut c_void)>(
                 FOLLOW_CAM_FOLLOW_RVA,
             );
 
-        hook::install(follow_cam_follow, |original| {
+        hook(follow_cam_follow, |original| {
             move |param_1, param_2, param_3| {
                 // Setting this flag disables position interpolation for the camera attach
                 // point in the function below.
-                let first_person = CameraControl::scope(|control| control.first_person());
+                let first_person = CoreLogic::is_first_person();
                 let reset_camera = mem::replace(&mut (*param_1).reset_camera, first_person);
 
                 original(param_1, param_2, param_3);
 
                 (*param_1).reset_camera = reset_camera;
             }
-        })
-        .unwrap();
+        });
 
         let set_wwise_listener = program
             .derva_ptr::<unsafe extern "C" fn(*mut c_void, *const CSCam) -> u32>(
                 SET_WWISE_LISTENER_RVA,
             );
-        hook::install(set_wwise_listener, |original| {
+        hook(set_wwise_listener, |original| {
             move |param_1, param_2| {
                 let mut param_2 = param_2.read();
 
@@ -111,15 +109,14 @@ pub fn init_camera_update(program: Program) -> eyre::Result<()> {
 
                 original(param_1, &param_2)
             }
-        })
-        .unwrap();
+        });
 
         let push_tae700_modifier = program
             .derva_ptr::<unsafe extern "C" fn(*mut CSChrBehaviorDataModule, *mut [f32; 8])>(
                 PUSH_TAE700_MODIFIER_RVA,
             );
 
-        hook::install(push_tae700_modifier, |original| {
+        hook(push_tae700_modifier, |original| {
             move |param_1, param_2| {
                 if let Some(player) = PlayerIns::main_player()
                     && &raw mut player.chr_ins == (*param_1).owner.as_ptr()
@@ -129,8 +126,7 @@ pub fn init_camera_update(program: Program) -> eyre::Result<()> {
 
                 original(param_1, param_2);
             }
-        })
-        .unwrap();
+        });
 
         let posture_control_right =
             program
@@ -138,13 +134,12 @@ pub fn init_camera_update(program: Program) -> eyre::Result<()> {
                     POSTURE_CONTROL_RIGHT_RVA,
                 );
 
-        hook::install(posture_control_right, |original| {
+        hook(posture_control_right, |original| {
             move |param_1, param_2, param_3, param_4| {
                 let posture_angle = log_unwind!(hand_posture_control(**param_1).unwrap_or(0));
                 original(param_1, param_2, param_3, param_4) + posture_angle
             }
-        })
-        .unwrap();
+        });
 
         let chr_root_motion = program.derva_ptr::<unsafe extern "C" fn(
             *mut CSChrPhysicsModule,
@@ -153,7 +148,7 @@ pub fn init_camera_update(program: Program) -> eyre::Result<()> {
             *mut c_void,
         )>(CHR_ROOT_MOTION_RVA);
 
-        hook::install(chr_root_motion, |original| {
+        hook(chr_root_motion, |original| {
             move |param_1, param_2, param_3, param_4| {
                 let mut param_3 = *param_3;
 
@@ -165,8 +160,7 @@ pub fn init_camera_update(program: Program) -> eyre::Result<()> {
 
                 original(param_1, param_2, &mut param_3, param_4);
             }
-        })
-        .unwrap();
+        });
     }
 
     Ok(())
@@ -174,33 +168,26 @@ pub fn init_camera_update(program: Program) -> eyre::Result<()> {
 
 #[cfg_attr(debug_assertions, libhotpatch::hotpatch)]
 unsafe fn update_camera(tpf: f32, original: &dyn Fn()) {
-    let camera_updated = CameraControl::scope_mut(|control| {
-        control.tpf = tpf;
+    CoreLogic::scope::<Void, _>(|mut context| context.update_tpf(tpf));
 
-        if control.first_person()
-            && let (state, Some(context)) = control.state_and_context()
-        {
-            context.update_cs_cam(state);
-            return true;
-        }
-
-        false
+    let camera_updated = CoreLogic::scope::<World, _>(|mut context| {
+        context.update_cs_cam();
+        context.first_person()
     });
 
-    if !camera_updated {
+    if matches!(camera_updated, None | Some(false)) {
         original();
     }
 }
 
 #[cfg_attr(debug_assertions, libhotpatch::hotpatch)]
 unsafe fn update_move_map_step(original: &dyn Fn()) {
-    CameraControl::scope_mut(|control| {
-        control.next_frame();
+    CoreLogic::scope::<Void, _>(|mut context| context.next_frame());
 
-        if let (state, Some(context)) = control.state_and_context() {
-            context.try_transition(state);
-            context.update_chr_cam(state);
-        }
+    CoreLogic::scope::<World, _>(|mut context| {
+        context.update_behavior_states();
+        context.try_transition();
+        context.update_chr_cam();
     });
 
     original();
@@ -210,11 +197,10 @@ unsafe fn update_move_map_step(original: &dyn Fn()) {
 unsafe fn update_lock_tgt(original: &dyn Fn()) {
     original();
 
-    CameraControl::scope_mut(|control| {
-        if control.first_person()
-            && let (state, Some(context)) = control.state_and_context()
-            && !state.can_transition()
-            && !context.is_player_sprinting(state)
+    CoreLogic::scope::<World, _>(|mut context| {
+        if context.first_person()
+            && !context.can_transition()
+            && !context.is_player_sprinting()
             && !context.player.is_riding()
             && !context.player.has_action_request()
             && !context.player.is_in_throw()
@@ -229,11 +215,11 @@ unsafe fn update_lock_tgt(original: &dyn Fn()) {
 
 #[cfg_attr(debug_assertions, libhotpatch::hotpatch)]
 unsafe fn update_chr_follow_cam(follow_cam: &mut ChrExFollowCam, original: &dyn Fn()) {
-    CameraControl::scope_mut(|control| control.state_and_context().0.update_follow_cam(follow_cam));
+    CoreLogic::scope::<World, _>(|mut context| context.update_follow_cam(follow_cam));
 
     original();
 
-    if CameraControl::scope(|control| control.first_person()) {
+    if CoreLogic::is_first_person() {
         follow_cam.locked_on_cam_offset = 0.0;
     }
 }
@@ -270,7 +256,7 @@ unsafe fn update_fe_man() {
 
 #[cfg_attr(debug_assertions, libhotpatch::hotpatch)]
 unsafe fn wwise_listener_for_fp() -> Option<F32ViewMatrix> {
-    if !CameraControl::scope(|control| control.first_person()) {
+    if !CoreLogic::is_first_person() {
         return None;
     }
 
@@ -285,7 +271,7 @@ unsafe fn wwise_listener_for_fp() -> Option<F32ViewMatrix> {
 
 #[cfg_attr(debug_assertions, libhotpatch::hotpatch)]
 unsafe fn tae700_override(args: &mut [f32; 8]) {
-    if !CameraControl::scope(|control| control.first_person()) {
+    if !CoreLogic::is_first_person() {
         return;
     }
 
@@ -295,12 +281,10 @@ unsafe fn tae700_override(args: &mut [f32; 8]) {
 
 #[cfg_attr(debug_assertions, libhotpatch::hotpatch)]
 unsafe fn hand_posture_control(some_player: *const PlayerIns) -> Option<i32> {
-    let first_person = || CameraControl::scope(|control| control.first_person());
-
     let main_player = PlayerIns::main_player()?;
     let is_main_player = ptr::eq(some_player, main_player);
 
-    if !is_main_player || main_player.is_2h() || !first_person() {
+    if !is_main_player || main_player.is_2h() || !CoreLogic::is_first_person() {
         return None;
     }
 
@@ -316,11 +300,11 @@ unsafe fn root_motion_modifier(
     let is_main_player = ptr::addr_eq(some_chr, main_player);
 
     if !is_main_player
-        || !CameraControl::scope_mut(|control| {
-            let unlocked_movement = control.unlocked_movement && control.first_person();
-            let context = unlocked_movement.then(|| control.state_and_context());
-            matches!(context, Some((_, Some(context))) if context.has_state(BehaviorState::Attack))
-        })
+        || !CoreLogic::scope::<World, _>(|context| {
+            context.config.unlocked_movement
+                && context.first_person()
+                && context.has_state(BehaviorState::Attack)
+        })?
     {
         return None;
     }
