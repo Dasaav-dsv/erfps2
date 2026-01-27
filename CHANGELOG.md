@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.0] 2026-01-27
+
+### Added
+
+- Some support for mods that change the default lock on behavior.
+
+### Changed
+
+- Shader crosshair visuals, now with added anti-aliasing.
+- Default `crosshair.kind` to `"dot"`.
+- Default `crosshair.scale_*` to `1.2`.
+- Improved the `correct_screen_coords_fisheye` algorithm.
+- Refactored the codebase for future maintainability.
+
 ## [0.1.12] 2026-01-26
 
 ### Added
