@@ -97,6 +97,7 @@ pub fn init_camera_update(program: Program) -> eyre::Result<()> {
             .derva_ptr::<unsafe extern "C" fn(*mut c_void, *const CSCam) -> u32>(
                 SET_WWISE_LISTENER_RVA,
             );
+
         hook(set_wwise_listener, |original| {
             move |param_1, param_2| {
                 let mut param_2 = param_2.read();

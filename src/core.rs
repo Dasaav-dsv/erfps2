@@ -19,7 +19,7 @@ use crate::{
         behavior::{BehaviorStateSet, BehaviorStates},
         head_tracker::HeadTracker,
         stabilizer::CameraStabilizer,
-        world::{InWorldResult, Void, World, WorldState},
+        world::{World, WorldState},
     },
     game::GameDataManExt,
     player::PlayerExt,
@@ -42,7 +42,7 @@ pub struct CoreLogic {
     state: RwLock<State>,
 }
 
-pub struct CoreLogicContext<'s, W = Void<'s>> {
+pub struct CoreLogicContext<'s, W> {
     pub config: &'s Config,
     pub world: W,
 }
@@ -62,7 +62,7 @@ pub struct State {
 impl CoreLogic {
     pub fn scope<W: WorldState, R>(
         f: impl for<'lt> FnOnce(CoreLogicContext<'_, W::With<'lt>>) -> R,
-    ) -> <W as InWorldResult>::Result<R> {
+    ) -> W::Result<R> {
         let scoped = CoreLogic::get();
 
         let mut config = scoped.config.lock().unwrap();
@@ -193,8 +193,8 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
         }
 
         let is_lock_on_toggled = self.lock_tgt.is_locked_on != self.lock_tgt.is_lock_on_requested;
-        let should_not_lock_on = (!self.config.prioritize_lock_on && is_lock_on_toggled)
-            || (!self.lock_tgt.is_locked_on && is_lock_on_toggled);
+        let should_not_lock_on =
+            (!self.lock_tgt.is_locked_on || !self.config.prioritize_lock_on) && is_lock_on_toggled;
 
         if self.can_transition()
             && should_not_lock_on

@@ -64,7 +64,7 @@ where
         );
     }
 
-    (custom_collector.is_hit != 0).then(|| custom_collector.hit)
+    (custom_collector.is_hit != 0).then_some(custom_collector.hit)
 }
 
 trait HavokShape {}
@@ -273,9 +273,9 @@ impl hknpSphereShape {
                     HKNP_SPHERE_SHAPE_RVA,
                 );
 
-            *(&raw mut (*uninit_ptr).vertex_count) = 1;
+            (*uninit_ptr).vertex_count = 1;
             ctor(uninit_ptr, &Vec4::ZERO, radius);
-            *(&raw mut (*uninit_ptr).size_bytes) = 0x50;
+            (*uninit_ptr).size_bytes = 0x50;
 
             uninit.assume_init()
         }

@@ -75,5 +75,5 @@ fn correct_screen_coords_barrel(xy: Vec2) -> Vec2 {
     let p_sq = signed_uv * signed_uv;
     let ivp = (0.25 + z * (nx * p_sq.x + ny * p_sq.y)).sqrt();
 
-    return z * signed_uv / (0.5 + ivp) * 0.5 + 0.5;
+    z * signed_uv / (0.5 + ivp) * 0.5 + 0.5
 }
