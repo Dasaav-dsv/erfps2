@@ -474,8 +474,6 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
             }
         }
 
-        log::info!("");
-
         self.behavior_states.push_state_set(behavior_set);
     }
 
