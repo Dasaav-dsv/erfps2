@@ -9,14 +9,6 @@ pub struct HeadTracker {
 }
 
 impl HeadTracker {
-    pub const fn new() -> Self {
-        Self {
-            frame: 0,
-            last: Quat::IDENTITY,
-            rotation: Quat::IDENTITY,
-        }
-    }
-
     pub fn next_tracked(&mut self, frame: u64, new: Mat3A) -> Quat {
         let prev_frame = mem::replace(&mut self.frame, frame);
 
@@ -47,5 +39,15 @@ impl HeadTracker {
         self.last = Quat::from_mat3a(&new);
 
         self.rotation
+    }
+}
+
+impl Default for HeadTracker {
+    fn default() -> Self {
+        Self {
+            frame: 0,
+            last: Quat::IDENTITY,
+            rotation: Quat::IDENTITY,
+        }
     }
 }

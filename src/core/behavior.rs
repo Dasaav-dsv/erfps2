@@ -1,4 +1,4 @@
-use bitvec::{BitArr, array::BitArray};
+use bitvec::BitArr;
 use strum::EnumCount;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, EnumCount)]
@@ -8,36 +8,23 @@ pub enum BehaviorState {
     Gesture,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 pub struct BehaviorStateSet {
     bits: BitArr!(for BehaviorState::COUNT, in u8),
 }
 
+#[derive(Default)]
 pub struct BehaviorStates {
     sets: [BehaviorStateSet; 2],
 }
 
 impl BehaviorStateSet {
-    const ZERO: Self = Self::new();
-
-    pub const fn new() -> Self {
-        Self {
-            bits: BitArray::ZERO,
-        }
-    }
-
     pub fn set_state(&mut self, state: BehaviorState) {
         self.bits.set(state as usize, true);
     }
 }
 
 impl BehaviorStates {
-    pub const fn new() -> Self {
-        Self {
-            sets: [BehaviorStateSet::ZERO; 2],
-        }
-    }
-
     pub fn has_state(&self, state: BehaviorState) -> bool {
         (self.sets[0].bits | self.sets[1].bits)[state as usize]
     }

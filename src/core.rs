@@ -3,7 +3,7 @@ use std::{
     ffi::{CStr, c_char},
     mem,
     ops::{Deref, DerefMut},
-    sync::{LazyLock, Mutex, RwLock},
+    sync::{LazyLock, RwLock},
 };
 
 use eldenring::cs::{
@@ -38,8 +38,8 @@ mod head_tracker;
 mod stabilizer;
 
 pub struct CoreLogic {
-    config: Mutex<ConfigUpdater>,
-    state: RwLock<State>,
+    config: ConfigUpdater,
+    state: State,
 }
 
 pub struct CoreLogicContext<'s, W> {
@@ -65,32 +65,31 @@ impl CoreLogic {
     ) -> W::Result<R> {
         let scoped = CoreLogic::get();
 
-        let mut config = scoped.config.lock().unwrap();
-        let config = config.get_or_update();
+        let mut scoped = scoped.write().unwrap();
+        let scoped = &mut *scoped;
 
-        let mut state = scoped.state.write().unwrap();
-        let state = &mut *state;
+        let config = scoped.config.get_or_update();
+        let state = &mut scoped.state;
 
         W::in_world(state, move |world| f(CoreLogicContext { config, world }))
     }
 
     pub fn is_first_person() -> bool {
-        CoreLogic::get().state.read().unwrap().first_person
+        CoreLogic::get().read().unwrap().state.first_person
     }
 
-    fn new() -> Self {
+    fn get() -> &'static RwLock<CoreLogic> {
+        static S: LazyLock<RwLock<CoreLogic>> = LazyLock::new(RwLock::default);
+        &S
+    }
+}
+
+impl Default for CoreLogic {
+    fn default() -> Self {
         let mut config = ConfigUpdater::new().unwrap();
         let state = State::from_config(config.get_or_update());
 
-        Self {
-            config: Mutex::new(config),
-            state: RwLock::new(state),
-        }
-    }
-
-    fn get() -> &'static CoreLogic {
-        static S: LazyLock<CoreLogic> = LazyLock::new(CoreLogic::new);
-        &S
+        Self { config, state }
     }
 }
 
@@ -107,8 +106,8 @@ impl State {
             trans_time: 0.0,
             saved_angle_limit: None,
             stabilizer: CameraStabilizer::new(samples),
-            head_tracker: HeadTracker::new(),
-            behavior_states: BehaviorStates::new(),
+            head_tracker: HeadTracker::default(),
+            behavior_states: BehaviorStates::default(),
         }
     }
 }
@@ -428,7 +427,7 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
     }
 
     pub fn update_behavior_states(&mut self) {
-        let mut behavior_set = BehaviorStateSet::new();
+        let mut behavior_set = BehaviorStateSet::default();
 
         for node in self
             .player
