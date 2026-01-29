@@ -3,7 +3,7 @@ use std::{
     fs, io,
     os::windows::ffi::OsStringExt,
     path::{Path, PathBuf},
-    time::{Instant, SystemTime},
+    time::{Duration, Instant, SystemTime},
 };
 
 use toml::de::Error as TomlError;
@@ -29,11 +29,12 @@ pub struct ConfigUpdater {
 
 impl ConfigUpdater {
     const CONFIG_NAME: &str = "erfps2.toml";
-    const UPDATE_MS: u128 = 100;
+    const UPDATE_INTERVAL: Duration = Duration::from_millis(100);
 
     pub fn new() -> eyre::Result<Self> {
         let config_path = {
             let mut path = current_module_path()?;
+            log::info!("module path: {path:?}");
             path.set_file_name(Self::CONFIG_NAME);
             path.into_boxed_path()
         };
@@ -55,14 +56,19 @@ impl ConfigUpdater {
     }
 
     pub fn get_or_update(&mut self) -> &Config {
-        if self.last_update.elapsed().as_millis() > Self::UPDATE_MS
-            && let Ok(timestamp) = fs::metadata(&self.config_path)
+        if self.last_update.elapsed() > Self::UPDATE_INTERVAL {
+            self.last_update = Instant::now();
+
+            let timestamp = fs::metadata(&self.config_path)
                 .inspect_err(Self::report_fs_error)
                 .and_then(|m| m.modified())
-            && self.last_timestamp.is_none_or(|last| last != timestamp)
-        {
-            self.config = Self::read_or_default(&self.config_path);
-            self.last_timestamp = Some(timestamp);
+                .ok();
+
+            if timestamp != self.last_timestamp {
+                log::info!("reloading config");
+                self.config = Self::read_or_default(&self.config_path);
+                self.last_timestamp = timestamp;
+            }
         }
 
         &self.config

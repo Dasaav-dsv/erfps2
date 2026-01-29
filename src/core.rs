@@ -287,13 +287,14 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
             );
         }
 
+        let frame_time = self.tpf;
         let tracking_rotation = if self.player.is_in_throw()
             || (self.config.track_damage && self.has_state(BehaviorState::Damage))
             || (self.config.track_dodges && self.has_state(BehaviorState::Evasion))
         {
-            self.head_tracker.next_tracked(frame, head_rotation)
+            self.head_tracker.next_tracked(frame, frame_time, head_rotation)
         } else {
-            self.head_tracker.next_untracked(frame, head_rotation)
+            self.head_tracker.next_untracked(frame, frame_time, head_rotation)
         };
 
         let camera_rotation = camera_rotation * tracking_rotation;
