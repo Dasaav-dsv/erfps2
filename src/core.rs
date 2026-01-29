@@ -273,8 +273,10 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
         let cam_pitch = camera_rotation.to_euler(EulerRot::ZXY).1;
         let cam_pitch_exp = (cam_pitch.abs() / 3.0).powi(2);
 
-        let head_pitch = head_rotation.to_euler(EulerRot::ZXY).1;
-        let head_upright = (1.0 - head_pitch.abs() / PI / 2.0).max(0.0).sqrt();
+        let (head_roll, head_pitch, _) = head_rotation.to_euler(EulerRot::ZXY);
+
+        let head_upright =
+            ((1.05 - head_pitch.abs() / PI) * (1.05 - head_roll.abs() / PI)).clamp(0.0, 1.0);
 
         let world_contrib = Vec3::new(0.0, 0.1, 0.0);
         let head_contrib = Vec3::new(0.0, -0.1 * head_upright, -0.05);
