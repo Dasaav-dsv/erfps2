@@ -125,7 +125,7 @@ impl<'s, W: WorldState> CoreLogicContext<'s, W> {
                 .is_some_and(|ptr| ptr.state != 1)
         };
 
-        self.first_person && !in_cutscene() && self.is_dist_view_cam()
+        self.first_person && !in_cutscene() && !self.is_dist_view_cam()
     }
 
     pub fn next_frame(&mut self) {
