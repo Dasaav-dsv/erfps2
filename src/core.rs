@@ -7,8 +7,8 @@ use std::{
 };
 
 use eldenring::cs::{
-    CSActionButtonMan, CSEventFlagMan, CSRemo, ChrExFollowCam, ChrIns, FieldInsHandle,
-    FieldInsType, GameDataMan, LockTgtMan, PlayerIns,
+    CSActionButtonMan, CSEventFlagMan, CSRemo, ChrCam, ChrCamType, ChrExFollowCam, ChrIns,
+    FieldInsHandle, FieldInsType, GameDataMan, LockTgtMan, PlayerIns,
 };
 use fromsoftware_shared::{F32ViewMatrix, FromStatic};
 use glam::{EulerRot, Mat3A, Mat4, Quat, Vec3, Vec4};
@@ -19,7 +19,7 @@ use crate::{
         behavior::{BehaviorStateSet, BehaviorStates},
         head_tracker::HeadTracker,
         stabilizer::CameraStabilizer,
-        world::{World, WorldState},
+        world::{FromWorld, Void, World, WorldState},
     },
     game::GameDataManExt,
     player::PlayerExt,
@@ -76,7 +76,7 @@ impl CoreLogic {
     }
 
     pub fn is_first_person() -> bool {
-        CoreLogic::get().read().unwrap().state.first_person
+        CoreLogic::scope::<Void, _>(|context| context.first_person())
     }
 
     fn get() -> &'static RwLock<CoreLogic> {
@@ -114,13 +114,18 @@ impl State {
 }
 
 impl<'s, W: WorldState> CoreLogicContext<'s, W> {
-    pub fn first_person(&self) -> bool {
-        let remo = unsafe { CSRemo::instance().ok() };
-        let in_cutscene = remo
-            .and_then(|remo| remo.remo_man.as_ref())
-            .is_some_and(|ptr| ptr.state != 1);
+    pub fn first_person(&self) -> bool
+    where
+        for<'a> &'a ChrCam: FromWorld<&'a W>,
+        for<'a> &'a CSRemo: FromWorld<&'a W>,
+    {
+        let in_cutscene = || {
+            self.get::<CSRemo>()
+                .and_then(|remo| remo.remo_man.as_ref())
+                .is_some_and(|ptr| ptr.state != 1)
+        };
 
-        self.first_person && !in_cutscene
+        self.first_person && !in_cutscene() && self.is_dist_view_cam()
     }
 
     pub fn next_frame(&mut self) {
@@ -149,7 +154,12 @@ impl<'s, W: WorldState> CoreLogicContext<'s, W> {
         );
     }
 
-    pub fn update_follow_cam(&mut self, follow_cam: &mut ChrExFollowCam) {
+    pub fn update_follow_cam(&mut self, follow_cam: &mut ChrExFollowCam)
+    where
+        for<'a> &'a ChrCam: FromWorld<&'a W>,
+        for<'a> &'a CSRemo: FromWorld<&'a W>,
+        for<'a> &'a LockTgtMan: FromWorld<&'a W>,
+    {
         let first_person = self.first_person();
 
         unsafe {
@@ -179,7 +189,7 @@ impl<'s, W: WorldState> CoreLogicContext<'s, W> {
             follow_cam.reset_camera_x = true;
         }
 
-        if let Ok(lock_tgt) = unsafe { LockTgtMan::instance() } {
+        if let Some(lock_tgt) = self.get::<LockTgtMan>() {
             let lock_chase_rate = &mut follow_cam.lock_chase_rate;
 
             if lock_tgt.is_locked_on && *lock_chase_rate <= 1.0 {
@@ -188,6 +198,26 @@ impl<'s, W: WorldState> CoreLogicContext<'s, W> {
                 *lock_chase_rate = f32::max(*lock_chase_rate - self.tpf, 0.3);
             }
         }
+    }
+
+    fn is_aim_cam(&self) -> bool
+    where
+        for<'a> &'a ChrCam: FromWorld<&'a W>,
+    {
+        self.get::<ChrCam>().is_some_and(|chr_cam| {
+            matches!(
+                chr_cam.camera_type,
+                ChrCamType::Unk1 | ChrCamType::Unk2 | ChrCamType::Unk3
+            )
+        })
+    }
+
+    fn is_dist_view_cam(&self) -> bool
+    where
+        for<'a> &'a ChrCam: FromWorld<&'a W>,
+    {
+        self.get::<ChrCam>()
+            .is_some_and(|chr_cam| chr_cam.camera_type == ChrCamType::Unk5)
     }
 }
 
@@ -322,7 +352,7 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
         self.set_crosshair_if(
             first_person
                 && (!self.lock_tgt.is_locked_on || self.config.soft_lock_on)
-                && !self.player.chr_flags1c5.precision_shooting(),
+                && !self.is_aim_cam(),
         );
 
         if !first_person {
@@ -357,7 +387,7 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
     }
 
     pub fn fov(&self) -> f32 {
-        if !self.player.chr_flags1c5.precision_shooting() {
+        if !self.is_aim_cam() {
             return self.config.fov;
         }
 
