@@ -10,7 +10,12 @@ pub trait GameDataManExt {
 
 impl GameDataManExt for GameDataMan {
     unsafe fn instance() -> Option<&'static mut GameDataMan> {
-        unsafe { Program::current().derva::<Self>(GAME_DATA_MAN_RVA).as_mut() }
+        unsafe {
+            Program::current()
+                .derva::<*mut Self>(GAME_DATA_MAN_RVA)
+                .as_mut()?
+                .as_mut()
+        }
     }
 
     fn is_hud_enabled(&self) -> bool {
