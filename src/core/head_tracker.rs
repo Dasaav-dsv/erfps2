@@ -1,14 +1,42 @@
-use glam::{Mat3A, Quat};
+use fromsoftware_shared::F32ModelMatrix;
+use glam::{Mat4, Quat, Vec3};
 
-use crate::core::frame_cached::{FrameCache, Token};
+use crate::{
+    core::{
+        BehaviorState, CoreLogicContext, frame_cached::FrameCache, stabilizer::CameraStabilizer,
+        world::World,
+    },
+    player::PlayerExt,
+};
 
+#[derive(Default)]
 pub struct HeadTracker {
     last: Option<Quat>,
     rotation: Quat,
     rotation_target: Quat,
+    stabilizer: CameraStabilizer,
+    output: Option<Output>,
+}
+
+pub struct Args {
+    pub model_matrix: F32ModelMatrix,
+    pub head_matrix: F32ModelMatrix,
+    pub stabilizer_factor: f32,
+    pub use_stabilizer: bool,
+    pub is_tracked: bool,
+}
+
+pub struct Output {
+    pub tracking_rotation: Quat,
+    pub stabilized_head_position: Vec3,
+    pub head_matrix: F32ModelMatrix,
 }
 
 impl HeadTracker {
+    pub fn set_stabilizer_window(&mut self, window: f32) {
+        self.stabilizer.set_window(window);
+    }
+
     fn rotate_towards_target(&mut self, frame_time: f32) {
         let distance = self.rotation.angle_between(self.rotation_target);
         let step = rip(distance, 0.0, 1.0, frame_time);
@@ -18,18 +46,30 @@ impl HeadTracker {
 }
 
 impl FrameCache for HeadTracker {
-    type Input = (Mat3A, bool);
-    type Output = Quat;
+    type Input = Args;
+    type Output<'a> = &'a Output;
 
-    fn update(
-        &mut self,
-        frame_time: f32,
-        (input, is_tracked): Self::Input,
-        _: Token,
-    ) -> Self::Output {
-        let input = Quat::from_mat3a(&input);
+    fn update(&mut self, frame_time: f32, args: Self::Input) -> Self::Output<'_> {
+        let mut head_position = args.head_matrix.translation();
 
-        if is_tracked && let Some(last) = self.last {
+        if args.use_stabilizer {
+            let player_matrix = Mat4::from(args.model_matrix);
+
+            let mut local_head_pos = player_matrix.inverse().project_point3(head_position);
+
+            let stabilized = self.stabilizer.update(frame_time, local_head_pos);
+            let delta = stabilized - local_head_pos;
+
+            local_head_pos += delta.clamp_length_max(args.stabilizer_factor * 0.1);
+
+            head_position = player_matrix.project_point3(local_head_pos);
+        }
+
+        let input = Quat::from_mat3a(&args.head_matrix.rotation());
+
+        if args.is_tracked
+            && let Some(last) = self.last
+        {
             self.rotation_target *= last.inverse() * input;
             self.rotation_target = self.rotation_target.normalize();
         } else {
@@ -39,24 +79,38 @@ impl FrameCache for HeadTracker {
         self.last = Some(input);
         self.rotate_towards_target(frame_time);
 
-        self.rotation
+        self.output.insert(Output {
+            tracking_rotation: self.rotation,
+            stabilized_head_position: head_position,
+            head_matrix: args.head_matrix,
+        })
     }
 
-    fn get_cached(&mut self, _frame_time: f32, _input: Self::Input, _: Token) -> Self::Output {
-        self.rotation
+    fn get_cached(&mut self, _frame_time: f32, _input: Self::Input) -> Self::Output<'_> {
+        self.output.as_ref().expect("FrameCache logic error")
     }
 
-    fn reset(&mut self, _: Token) {
+    fn reset(&mut self) {
+        self.stabilizer.reset();
         self.last = None;
     }
 }
 
-impl Default for HeadTracker {
-    fn default() -> Self {
+impl From<&CoreLogicContext<'_, World<'_>>> for Args {
+    fn from(context: &CoreLogicContext<'_, World<'_>>) -> Self {
+        let head_matrix = context.player.head_matrix();
+        let model_matrix = context.player.model_matrix();
+
+        let is_tracked = context.player.is_in_throw()
+            || (context.config.track_damage && context.has_state(BehaviorState::Damage))
+            || (context.config.track_dodges && context.has_state(BehaviorState::Evasion));
+
         Self {
-            last: None,
-            rotation: Quat::IDENTITY,
-            rotation_target: Quat::IDENTITY,
+            head_matrix,
+            model_matrix,
+            stabilizer_factor: context.config.stabilizer_factor,
+            use_stabilizer: context.config.use_stabilizer,
+            is_tracked,
         }
     }
 }

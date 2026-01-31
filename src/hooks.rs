@@ -273,12 +273,12 @@ unsafe fn wwise_listener_for_fp() -> Option<F32ViewMatrix> {
     }
 
     let player = unsafe { PlayerIns::main_player()? };
-    let mut mtx = player.model_mtx();
+    let mut matrix = player.model_matrix();
 
-    mtx.3.1 += 1.5;
-    mtx.3 = mtx.3 - mtx.2;
+    matrix.3.1 += 1.5;
+    matrix.3 = matrix.3 - matrix.2;
 
-    Some(mtx)
+    Some(matrix)
 }
 
 #[cfg_attr(debug_assertions, libhotpatch::hotpatch)]

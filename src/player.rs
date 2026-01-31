@@ -19,15 +19,15 @@ pub trait PlayerExt {
 
     unsafe fn main_player<'a>() -> Option<&'a mut Self>;
 
-    fn model_mtx(&self) -> F32ModelMatrix;
+    fn model_matrix(&self) -> F32ModelMatrix;
 
-    fn head_position(&self) -> F32ModelMatrix;
+    fn head_matrix(&self) -> F32ModelMatrix;
 
     fn location_entity_matrix_mut(&mut self) -> &mut F32ModelMatrix;
 
-    fn input_move_dir(&self) -> Vec3;
+    fn aim_matrix_mut(&mut self) -> &mut F32ViewMatrix;
 
-    fn aim_mtx_mut(&mut self) -> &mut F32ViewMatrix;
+    fn input_move_dir(&self) -> Vec3;
 
     fn set_lock_on(&mut self, state: bool);
 
@@ -68,14 +68,13 @@ impl PlayerExt for PlayerIns {
         world_chr_man.main_player.as_deref_mut()
     }
 
-    fn model_mtx(&self) -> F32ModelMatrix {
+    fn model_matrix(&self) -> F32ModelMatrix {
         let mut m = self.chr_ctrl.model_matrix;
-        m.0 = F32Vector4(0.0, 0.0, 0.0, 0.0) - m.0;
         m.2 = F32Vector4(0.0, 0.0, 0.0, 0.0) - m.2;
         m
     }
 
-    fn head_position(&self) -> F32ModelMatrix {
+    fn head_matrix(&self) -> F32ModelMatrix {
         type GetDmyPos = unsafe extern "C" fn(
             *const ChrIns,
             *mut F32ModelMatrix,
@@ -105,7 +104,7 @@ impl PlayerExt for PlayerIns {
         }
     }
 
-    fn aim_mtx_mut(&mut self) -> &mut F32ViewMatrix {
+    fn aim_matrix_mut(&mut self) -> &mut F32ViewMatrix {
         &mut self.aim_view_mtx
     }
 

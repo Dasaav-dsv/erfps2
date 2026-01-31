@@ -21,17 +21,17 @@ impl State {
     }
 }
 
-pub struct Token(());
-
 pub trait FrameCache {
     type Input;
-    type Output;
+    type Output<'a>
+    where
+        Self: 'a;
 
-    fn update(&mut self, frame_time: f32, input: Self::Input, _: Token) -> Self::Output;
+    fn update(&mut self, frame_time: f32, input: Self::Input) -> Self::Output<'_>;
 
-    fn get_cached(&mut self, frame_time: f32, input: Self::Input, _: Token) -> Self::Output;
+    fn get_cached(&mut self, frame_time: f32, input: Self::Input) -> Self::Output<'_>;
 
-    fn reset(&mut self, _: Token);
+    fn reset(&mut self);
 }
 
 impl<T: FrameCache> FrameCached<T> {
@@ -45,7 +45,7 @@ impl<T: FrameCache> FrameCached<T> {
 
     pub fn next_frame(&mut self, frame_time: f32) {
         if self.state == State::STALE {
-            self.cache.reset(Token(()));
+            self.cache.reset();
         }
 
         self.state.downgrade();
@@ -53,12 +53,12 @@ impl<T: FrameCache> FrameCached<T> {
         self.frame_time = frame_time;
     }
 
-    pub fn get(&mut self, input: T::Input) -> T::Output {
+    pub fn get(&mut self, input: T::Input) -> T::Output<'_> {
         if self.state != State::UPDATED {
             self.state = State::UPDATED;
-            self.cache.update(self.frame_time, input, Token(()))
+            self.cache.update(self.frame_time, input)
         } else {
-            self.cache.get_cached(self.frame_time, input, Token(()))
+            self.cache.get_cached(self.frame_time, input)
         }
     }
 }

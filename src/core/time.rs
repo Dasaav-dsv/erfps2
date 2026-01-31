@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use crate::core::frame_cached::{FrameCache, Token};
+use crate::core::frame_cached::{FrameCache};
 
 pub const FRAME_TIME_60: f32 = 1.0 / 60.0;
 
@@ -23,9 +23,9 @@ impl TransTime {
 
 impl FrameCache for FrameTime {
     type Input = ();
-    type Output = f32;
+    type Output<'a> = f32;
 
-    fn update(&mut self, _frame_time: f32, _input: Self::Input, _: Token) -> Self::Output {
+    fn update(&mut self, _frame_time: f32, _input: Self::Input) -> Self::Output<'_> {
         let now = Instant::now();
 
         let elapsed = self
@@ -38,29 +38,29 @@ impl FrameCache for FrameTime {
         elapsed
     }
 
-    fn get_cached(&mut self, frame_time: f32, _input: Self::Input, _: Token) -> Self::Output {
+    fn get_cached(&mut self, frame_time: f32, _input: Self::Input) -> Self::Output<'_> {
         frame_time
     }
 
-    fn reset(&mut self, _: Token) {
+    fn reset(&mut self) {
         self.instant = None;
     }
 }
 
 impl FrameCache for TransTime {
     type Input = ();
-    type Output = f32;
+    type Output<'a> = f32;
 
-    fn update(&mut self, frame_time: f32, _input: Self::Input, _: Token) -> Self::Output {
+    fn update(&mut self, frame_time: f32, _input: Self::Input) -> Self::Output<'_> {
         self.time += frame_time;
         self.time
     }
 
-    fn get_cached(&mut self, _frame_time: f32, _input: Self::Input, _: Token) -> Self::Output {
+    fn get_cached(&mut self, _frame_time: f32, _input: Self::Input) -> Self::Output<'_> {
         self.time
     }
 
-    fn reset(&mut self, _: Token) {
+    fn reset(&mut self) {
         self.time = 0.0;
     }
 }

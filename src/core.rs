@@ -7,11 +7,14 @@ use std::{
     sync::{LazyLock, Once, RwLock},
 };
 
-use eldenring::cs::{
-    CSActionButtonMan, CSEventFlagMan, CSRemo, ChrCam, ChrCamType, ChrExFollowCam, ChrIns,
-    FieldInsHandle, FieldInsType, GameDataMan, LockTgtMan, PlayerIns,
+use eldenring::{
+    cs::{
+        CSActionButtonMan, CSEventFlagMan, CSRemo, ChrCam, ChrCamType, ChrExFollowCam, ChrIns,
+        EzDrawFillMode, FieldInsHandle, FieldInsType, GameDataMan, LockTgtMan, PlayerIns, RendMan,
+    },
+    position::{HavokPosition, PositionDelta},
 };
-use fromsoftware_shared::{F32ModelMatrix, F32ViewMatrix, FromStatic};
+use fromsoftware_shared::{F32Vector4, F32ViewMatrix, FromStatic, Triangle};
 use glam::{EulerRot, Mat3A, Mat4, Quat, Vec3, Vec4};
 
 use crate::{
@@ -20,7 +23,6 @@ use crate::{
         behavior::{BehaviorStateSet, BehaviorStates},
         frame_cached::FrameCached,
         head_tracker::HeadTracker,
-        stabilizer::CameraStabilizer,
         time::{FrameTime, TransTime},
         world::{FromWorld, Void, World, WorldState},
     },
@@ -59,7 +61,6 @@ pub struct State {
     should_transition: bool,
     frame_time: FrameCached<FrameTime>,
     trans_time: FrameCached<TransTime>,
-    stabilizer: FrameCached<CameraStabilizer>,
     head_tracker: FrameCached<HeadTracker>,
     behavior_states: BehaviorStates,
     saved_angle_limit: Option<f32>,
@@ -124,7 +125,6 @@ impl State {
     fn from_config(config: &Config) -> Self {
         Self {
             should_transition: config.start_in_first_person,
-            stabilizer: FrameCached::new(CameraStabilizer::new(config.stabilizer_window)),
             ..Default::default()
         }
     }
@@ -151,12 +151,11 @@ where
         let frame_time = self.frame_time.measure();
 
         let stabilizer_window = self.config.stabilizer_window;
-        self.stabilizer.set_window(stabilizer_window);
+        self.head_tracker.set_stabilizer_window(stabilizer_window);
 
         self.trans_time.next_frame(frame_time);
-        self.stabilizer.next_frame(frame_time);
         self.head_tracker.next_frame(frame_time);
-        
+
         self.update_fov_correction();
     }
 
@@ -309,21 +308,21 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
     pub fn camera_position(&mut self) -> F32ViewMatrix {
         let camera_rotation = Quat::from_mat3a(&self.chr_cam.pers_cam.matrix.rotation());
 
-        let (head_mtx, mut head_pos) = self.head_position_stabilized();
-        let head_rotation = head_mtx.rotation();
+        let tracker_args = (&*self).into();
+        let output = self.head_tracker.get(tracker_args);
 
-        let is_tracked = self.player.is_in_throw()
-            || (self.config.track_damage && self.has_state(BehaviorState::Damage))
-            || (self.config.track_dodges && self.has_state(BehaviorState::Evasion));
+        let head_rotation = output.head_matrix.rotation::<Mat3A>();
+        let mut head_position = output.stabilized_head_position;
 
-        let tracking_rotation = self.head_tracker.get((head_rotation, is_tracked));
-
-        let camera_rotation = camera_rotation * tracking_rotation;
+        let camera_rotation = camera_rotation * output.tracking_rotation;
 
         let cam_pitch = camera_rotation.to_euler(EulerRot::ZXY).1;
         let cam_pitch_exp = (cam_pitch.abs() / 3.0).powi(2);
 
-        let (head_roll, head_pitch, _) = head_rotation.to_euler(EulerRot::ZXY);
+        let (head_roll, head_pitch, _) = output
+            .head_matrix
+            .rotation::<Mat3A>()
+            .to_euler(EulerRot::ZXY);
 
         let head_upright =
             ((1.05 - head_pitch.abs() / PI) * (1.05 - head_roll.abs() / PI)).clamp(0.0, 1.0);
@@ -333,11 +332,11 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
         let cam_contrib =
             Vec3::new(0.0, 0.03 + cam_pitch_exp, -0.025 + cam_pitch.abs() / 12.0) * head_upright;
 
-        head_pos += world_contrib
+        head_position += world_contrib
             + head_rotation.transpose() * head_contrib
             + camera_rotation.inverse() * cam_contrib;
 
-        Mat4::from_rotation_translation(camera_rotation, head_pos).into()
+        Mat4::from_rotation_translation(camera_rotation, head_position).into()
     }
 
     pub fn update_cs_cam(&mut self) {
@@ -358,7 +357,7 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
         self.cs_cam.pers_cam_1.matrix.3 = camera_pos.3;
         self.chr_cam.pers_cam.matrix.3 = camera_pos.3;
 
-        *self.player.aim_mtx_mut() = self.cs_cam.pers_cam_1.matrix;
+        *self.player.aim_matrix_mut() = self.cs_cam.pers_cam_1.matrix;
 
         let fov = self.fov();
 
@@ -410,16 +409,11 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
         let extra_player_height = self.config.extra_player_height;
         let player_height = extra_player_height * PlayerIns::HEIGHT;
 
-        let (head_mtx, head_pos) = self.head_position_stabilized();
-        let mut delta = head_pos - head_mtx.translation::<Vec3>();
-
-        delta.y += player_height;
-
         let location_entity_matrix = self.player.location_entity_matrix_mut();
-        location_entity_matrix.3 = location_entity_matrix.3 + delta.extend(0.0).into();
+        location_entity_matrix.3.1 += player_height;
 
         let chr_ctrl = self.player.chr_ctrl.as_mut();
-        chr_ctrl.model_matrix.3 = chr_ctrl.model_matrix.3 + delta.extend(0.0).into();
+        chr_ctrl.model_matrix.3.1 += player_height;
 
         let player_scale = 1.0 + extra_player_height.max(0.0);
         self.player.chr_ctrl.scale_size_y = player_scale;
@@ -524,25 +518,6 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
         }
 
         self.behavior_states.push_state_set(behavior_set);
-    }
-
-    fn head_position_stabilized(&mut self) -> (F32ModelMatrix, Vec3) {
-        let head_mtx = self.player.head_position();
-        let mut head_pos = head_mtx.translation();
-
-        if self.config.use_stabilizer {
-            let player_mtx = Mat4::from(self.player.chr_ctrl.model_matrix);
-            let local_head_pos = player_mtx.inverse().project_point3(head_pos);
-
-            let stabilized = self.stabilizer.get(local_head_pos);
-            let delta = stabilized - local_head_pos;
-
-            head_pos = player_mtx.project_point3(
-                local_head_pos + delta.clamp_length_max(self.config.stabilizer_factor * 0.1),
-            );
-        }
-
-        (head_mtx, head_pos)
     }
 
     fn soft_lock_on(&mut self, camera_pos: F32ViewMatrix) {

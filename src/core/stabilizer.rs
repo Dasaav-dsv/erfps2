@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use glam::Vec3;
 
-use crate::core::frame_cached::{FrameCache, Token};
+use crate::core::frame_cached::FrameCache;
 
 pub struct CameraStabilizer {
     window: f32,
@@ -36,20 +36,20 @@ impl CameraStabilizer {
 
 impl FrameCache for CameraStabilizer {
     type Input = Vec3;
-    type Output = Vec3;
+    type Output<'a> = Vec3;
 
-    fn update(&mut self, frame_time: f32, input: Self::Input, _: Token) -> Self::Output {
+    fn update(&mut self, frame_time: f32, input: Self::Input) -> Self::Output<'_> {
         self.samples = (self.window / frame_time).ceil() as u32;
         self.buf.push_front(input);
         self.buf.truncate(self.samples as usize);
         self.average(input)
     }
 
-    fn get_cached(&mut self, _frame_time: f32, input: Self::Input, _: Token) -> Self::Output {
+    fn get_cached(&mut self, _frame_time: f32, input: Self::Input) -> Self::Output<'_> {
         self.average(input)
     }
 
-    fn reset(&mut self, _: Token) {
+    fn reset(&mut self) {
         self.buf.clear();
     }
 }
