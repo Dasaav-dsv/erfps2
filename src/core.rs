@@ -7,14 +7,11 @@ use std::{
     sync::{LazyLock, Once, RwLock},
 };
 
-use eldenring::{
-    cs::{
-        CSActionButtonMan, CSEventFlagMan, CSRemo, ChrCam, ChrCamType, ChrExFollowCam, ChrIns,
-        EzDrawFillMode, FieldInsHandle, FieldInsType, GameDataMan, LockTgtMan, PlayerIns, RendMan,
-    },
-    position::{HavokPosition, PositionDelta},
+use eldenring::cs::{
+    CSActionButtonMan, CSEventFlagMan, CSRemo, ChrCam, ChrCamType, ChrExFollowCam, ChrIns,
+    FieldInsHandle, FieldInsType, GameDataMan, LockTgtMan, PlayerIns,
 };
-use fromsoftware_shared::{F32Vector4, F32ViewMatrix, FromStatic, Triangle};
+use fromsoftware_shared::{F32ViewMatrix, FromStatic};
 use glam::{EulerRot, Mat3A, Mat4, Quat, Vec3, Vec4};
 
 use crate::{
