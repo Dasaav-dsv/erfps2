@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use fromsoftware_shared::F32ModelMatrix;
 use glam::{Mat4, Quat, Vec3};
 
@@ -14,16 +16,26 @@ pub struct HeadTracker {
     last: Option<Quat>,
     rotation: Quat,
     rotation_target: Quat,
+    last_tracking_kind: TrackingKind,
     stabilizer: CameraStabilizer,
     output: Option<Output>,
+}
+
+#[derive(Copy, Clone, Default, PartialEq)]
+pub enum TrackingKind {
+    Global,
+    PlayerRelative,
+    #[default]
+    None,
 }
 
 pub struct Args {
     pub model_matrix: F32ModelMatrix,
     pub head_matrix: F32ModelMatrix,
+    pub player_matrix: F32ModelMatrix,
     pub stabilizer_factor: f32,
     pub use_stabilizer: bool,
-    pub is_tracked: bool,
+    pub tracking_kind: TrackingKind,
 }
 
 pub struct Output {
@@ -38,10 +50,23 @@ impl HeadTracker {
     }
 
     fn rotate_towards_target(&mut self, frame_time: f32) {
-        let distance = self.rotation.angle_between(self.rotation_target);
+        let angle = self.rotation_target.angle_between(Quat::IDENTITY);
+
+        let center_bias_until = PI / 2.0 * 3.0;
+
+        let biased_target = if angle < center_bias_until {
+            self.rotation_target.rotate_towards(
+                Quat::IDENTITY,
+                angle * (1.0 - (angle / center_bias_until)).powi(2),
+            )
+        } else {
+            self.rotation_target
+        };
+
+        let distance = self.rotation.angle_between(biased_target);
         let step = rip(distance, 0.0, 1.0, frame_time);
 
-        self.rotation = self.rotation.rotate_towards(self.rotation_target, step);
+        self.rotation = self.rotation.rotate_towards(biased_target, step);
     }
 }
 
@@ -65,9 +90,19 @@ impl FrameCache for HeadTracker {
             head_position = player_matrix.project_point3(local_head_pos);
         }
 
-        let input = Quat::from_mat3a(&args.head_matrix.rotation());
+        let mut input = Quat::from_mat3a(&args.head_matrix.rotation());
 
-        if args.is_tracked
+        if args.tracking_kind != self.last_tracking_kind {
+            self.last = None;
+            self.last_tracking_kind = args.tracking_kind;
+        }
+
+        if args.tracking_kind == TrackingKind::PlayerRelative {
+            let player_rotation = Quat::from_mat3a(&args.player_matrix.rotation());
+            input = player_rotation.inverse() * input;
+        }
+
+        if args.tracking_kind != TrackingKind::None
             && let Some(last) = self.last
         {
             self.rotation_target *= last.inverse() * input;
@@ -101,16 +136,24 @@ impl From<&CoreLogicContext<'_, World<'_>>> for Args {
         let head_matrix = context.player.head_matrix();
         let model_matrix = context.player.model_matrix();
 
-        let is_tracked = context.player.is_in_throw()
+        let tracking_kind = if context.player.is_in_throw()
             || (context.config.track_damage && context.has_state(BehaviorState::Damage))
-            || (context.config.track_dodges && context.has_state(BehaviorState::Evasion));
+            || (context.config.track_dodges && context.has_state(BehaviorState::Evasion))
+        {
+            TrackingKind::Global
+        } else if context.config.track_attacks && context.has_state(BehaviorState::Attack) {
+            TrackingKind::PlayerRelative
+        } else {
+            TrackingKind::None
+        };
 
         Self {
             head_matrix,
             model_matrix,
+            player_matrix: context.player.chr_ctrl.model_matrix,
             stabilizer_factor: context.config.stabilizer_factor,
             use_stabilizer: context.config.use_stabilizer,
-            is_tracked,
+            tracking_kind,
         }
     }
 }
