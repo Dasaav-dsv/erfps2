@@ -34,7 +34,7 @@ pub fn init_camera_update(program: Program) -> eyre::Result<()> {
             .derva_ptr::<unsafe extern "C" fn(*mut c_void, *const FD4Time)>(CAMERA_STEP_UPDATE_RVA);
 
         hook(update, |original| {
-            move |param_1, param_2| update_camera((*param_2).time, &|| original(param_1, param_2))
+            move |param_1, param_2| update_camera(&|| original(param_1, param_2))
         });
 
         let mms_update =
@@ -181,9 +181,7 @@ unsafe fn update_chr_model_pos(chr_ctrl: *mut ChrCtrl, original: &dyn Fn()) {
 }
 
 #[cfg_attr(debug_assertions, libhotpatch::hotpatch)]
-unsafe fn update_camera(tpf: f32, original: &dyn Fn()) {
-    CoreLogic::scope_mut::<Void, _>(|context| context.update_tpf(tpf));
-
+unsafe fn update_camera(original: &dyn Fn()) {
     let camera_updated = CoreLogic::scope_mut::<World, _>(|context| {
         context.update_cs_cam();
         context.first_person()

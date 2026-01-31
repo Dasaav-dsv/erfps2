@@ -11,15 +11,17 @@ use eldenring::cs::{
     CSActionButtonMan, CSEventFlagMan, CSRemo, ChrCam, ChrCamType, ChrExFollowCam, ChrIns,
     FieldInsHandle, FieldInsType, GameDataMan, LockTgtMan, PlayerIns,
 };
-use fromsoftware_shared::{F32ViewMatrix, FromStatic};
+use fromsoftware_shared::{F32ModelMatrix, F32ViewMatrix, FromStatic};
 use glam::{EulerRot, Mat3A, Mat4, Quat, Vec3, Vec4};
 
 use crate::{
     config::{Config, CrosshairKind, updater::ConfigUpdater},
     core::{
         behavior::{BehaviorStateSet, BehaviorStates},
+        frame_cached::FrameCached,
         head_tracker::HeadTracker,
         stabilizer::CameraStabilizer,
+        time::{FrameTime, TransTime},
         world::{FromWorld, Void, World, WorldState},
     },
     game::GameDataManExt,
@@ -36,8 +38,10 @@ pub use behavior::BehaviorState;
 pub mod world;
 
 mod behavior;
+mod frame_cached;
 mod head_tracker;
 mod stabilizer;
+mod time;
 
 pub struct CoreLogic {
     config: ConfigUpdater,
@@ -49,16 +53,16 @@ pub struct CoreLogicContext<'s, W> {
     world: NonNull<W>,
 }
 
+#[derive(Default)]
 pub struct State {
     first_person: bool,
     should_transition: bool,
-    frame: u64,
-    tpf: f32,
-    trans_time: f32,
-    saved_angle_limit: Option<f32>,
-    stabilizer: CameraStabilizer,
-    head_tracker: HeadTracker,
+    frame_time: FrameCached<FrameTime>,
+    trans_time: FrameCached<TransTime>,
+    stabilizer: FrameCached<CameraStabilizer>,
+    head_tracker: FrameCached<HeadTracker>,
     behavior_states: BehaviorStates,
+    saved_angle_limit: Option<f32>,
 }
 
 impl CoreLogic {
@@ -118,19 +122,10 @@ impl Default for CoreLogic {
 
 impl State {
     fn from_config(config: &Config) -> Self {
-        let tpf = const { 1.0 / 60.0 };
-        let samples = (config.stabilizer_window / tpf).ceil() as u32;
-
         Self {
-            first_person: false,
             should_transition: config.start_in_first_person,
-            frame: 0,
-            tpf: const { 1.0 / 60.0 },
-            trans_time: 0.0,
-            saved_angle_limit: None,
-            stabilizer: CameraStabilizer::new(samples),
-            head_tracker: HeadTracker::default(),
-            behavior_states: BehaviorStates::default(),
+            stabilizer: FrameCached::new(CameraStabilizer::new(config.stabilizer_window)),
+            ..Default::default()
         }
     }
 }
@@ -153,12 +148,16 @@ where
     }
 
     pub fn next_frame(&mut self) {
-        self.frame += 1;
-        self.update();
-    }
+        let frame_time = self.frame_time.measure();
 
-    pub fn update_tpf(&mut self, tpf: f32) {
-        self.tpf = tpf;
+        let stabilizer_window = self.config.stabilizer_window;
+        self.stabilizer.set_window(stabilizer_window);
+
+        self.trans_time.next_frame(frame_time);
+        self.stabilizer.next_frame(frame_time);
+        self.head_tracker.next_frame(frame_time);
+        
+        self.update_fov_correction();
     }
 
     pub fn update_follow_cam(&mut self, follow_cam: &mut ChrExFollowCam) {
@@ -191,13 +190,14 @@ where
             follow_cam.reset_camera_x = true;
         }
 
+        let frame_time = self.frame_time.get(());
         if let Some(lock_tgt) = self.get::<LockTgtMan>() {
             let lock_chase_rate = &mut follow_cam.lock_chase_rate;
 
             if lock_tgt.is_locked_on && *lock_chase_rate <= 1.0 {
-                *lock_chase_rate = f32::min(*lock_chase_rate + self.tpf, 1.0);
+                *lock_chase_rate = f32::min(*lock_chase_rate + frame_time, 1.0);
             } else if *lock_chase_rate > 0.3 {
-                *lock_chase_rate = f32::max(*lock_chase_rate - self.tpf, 0.3);
+                *lock_chase_rate = f32::max(*lock_chase_rate - frame_time, 0.3);
             }
         }
     }
@@ -226,13 +226,6 @@ where
         }
     }
 
-    fn update(&mut self) {
-        let samples = (self.config.stabilizer_window / self.tpf).ceil() as u32;
-        self.stabilizer.set_sample_count(samples);
-
-        self.update_fov_correction();
-    }
-
     fn update_fov_correction(&self) {
         enable_fov_correction(
             self.first_person && self.config.use_fov_correction,
@@ -257,10 +250,7 @@ where
         set_crosshair(crosshair, self.config.crosshair_scale);
     }
 
-    fn is_aim_cam(&self) -> bool
-    where
-        for<'a> &'a ChrCam: FromWorld<&'a W>,
-    {
+    fn is_aim_cam(&self) -> bool {
         self.get::<ChrCam>().is_some_and(|chr_cam| {
             matches!(
                 chr_cam.camera_type,
@@ -277,8 +267,7 @@ where
 
 impl<'s> CoreLogicContext<'_, World<'s>> {
     pub fn can_transition(&self) -> bool {
-        const STATE_TRANS_TIME: f32 = 0.233;
-        self.trans_time > STATE_TRANS_TIME
+        self.trans_time.can_transition()
     }
 
     pub fn try_transition(&mut self) {
@@ -286,9 +275,8 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
             return;
         };
 
-        match action_button_man.is_use_pressed {
-            true => self.trans_time += self.tpf,
-            false => self.trans_time = 0.0,
+        if action_button_man.is_use_pressed {
+            self.trans_time.get(());
         }
 
         let should_transition = self.should_transition;
@@ -319,38 +307,16 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
     }
 
     pub fn camera_position(&mut self) -> F32ViewMatrix {
-        let frame = self.frame;
-
-        let head_mtx = self.player.head_position();
-
-        let head_rotation = head_mtx.rotation();
         let camera_rotation = Quat::from_mat3a(&self.chr_cam.pers_cam.matrix.rotation());
 
-        let mut head_pos = head_mtx.translation();
+        let (head_mtx, mut head_pos) = self.head_position_stabilized();
+        let head_rotation = head_mtx.rotation();
 
-        if self.config.use_stabilizer {
-            let player_mtx = Mat4::from(self.player.chr_ctrl.model_matrix);
-            let local_head_pos = player_mtx.inverse().project_point3(head_pos);
-
-            let stabilized = self.stabilizer.next(frame, local_head_pos);
-            let delta = stabilized - local_head_pos;
-
-            head_pos = player_mtx.project_point3(
-                local_head_pos + delta.clamp_length_max(self.config.stabilizer_factor * 0.1),
-            );
-        }
-
-        let frame_time = self.tpf;
-        let tracking_rotation = if self.player.is_in_throw()
+        let is_tracked = self.player.is_in_throw()
             || (self.config.track_damage && self.has_state(BehaviorState::Damage))
-            || (self.config.track_dodges && self.has_state(BehaviorState::Evasion))
-        {
-            self.head_tracker
-                .next_tracked(frame, frame_time, head_rotation)
-        } else {
-            self.head_tracker
-                .next_untracked(frame, frame_time, head_rotation)
-        };
+            || (self.config.track_dodges && self.has_state(BehaviorState::Evasion));
+
+        let tracking_rotation = self.head_tracker.get((head_rotation, is_tracked));
 
         let camera_rotation = camera_rotation * tracking_rotation;
 
@@ -443,14 +409,19 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
     pub fn update_chr_model_pos(&mut self) {
         let extra_player_height = self.config.extra_player_height;
         let player_height = extra_player_height * PlayerIns::HEIGHT;
-        let player_scale = 1.0 + extra_player_height.max(0.0);
+
+        let (head_mtx, head_pos) = self.head_position_stabilized();
+        let mut delta = head_pos - head_mtx.translation::<Vec3>();
+
+        delta.y += player_height;
 
         let location_entity_matrix = self.player.location_entity_matrix_mut();
-        location_entity_matrix.3.1 += player_height;
+        location_entity_matrix.3 = location_entity_matrix.3 + delta.extend(0.0).into();
 
         let chr_ctrl = self.player.chr_ctrl.as_mut();
-        chr_ctrl.model_matrix.3.1 += player_height;
+        chr_ctrl.model_matrix.3 = chr_ctrl.model_matrix.3 + delta.extend(0.0).into();
 
+        let player_scale = 1.0 + extra_player_height.max(0.0);
         self.player.chr_ctrl.scale_size_y = player_scale;
     }
 
@@ -553,6 +524,25 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
         }
 
         self.behavior_states.push_state_set(behavior_set);
+    }
+
+    fn head_position_stabilized(&mut self) -> (F32ModelMatrix, Vec3) {
+        let head_mtx = self.player.head_position();
+        let mut head_pos = head_mtx.translation();
+
+        if self.config.use_stabilizer {
+            let player_mtx = Mat4::from(self.player.chr_ctrl.model_matrix);
+            let local_head_pos = player_mtx.inverse().project_point3(head_pos);
+
+            let stabilized = self.stabilizer.get(local_head_pos);
+            let delta = stabilized - local_head_pos;
+
+            head_pos = player_mtx.project_point3(
+                local_head_pos + delta.clamp_length_max(self.config.stabilizer_factor * 0.1),
+            );
+        }
+
+        (head_mtx, head_pos)
     }
 
     fn soft_lock_on(&mut self, camera_pos: F32ViewMatrix) {

@@ -1,39 +1,28 @@
-use std::{collections::VecDeque, mem};
+use std::collections::VecDeque;
 
 use glam::Vec3;
 
+use crate::core::frame_cached::{FrameCache, Token};
+
 pub struct CameraStabilizer {
-    frame: u64,
+    window: f32,
     samples: u32,
     buf: VecDeque<Vec3>,
 }
 
 impl CameraStabilizer {
-    pub const fn new(samples: u32) -> Self {
+    pub const DEFAULT_WINDOW: f32 = 0.3;
+
+    pub const fn new(window: f32) -> Self {
         Self {
-            frame: 0,
-            samples,
+            window,
+            samples: 0,
             buf: VecDeque::new(),
         }
     }
 
-    pub fn next(&mut self, frame: u64, new: Vec3) -> Vec3 {
-        let prev_frame = mem::replace(&mut self.frame, frame);
-
-        if prev_frame != frame {
-            if prev_frame + 1 != frame {
-                self.buf.clear();
-            }
-
-            self.buf.push_front(new);
-            self.buf.truncate(self.samples as usize);
-        }
-
-        self.average(new)
-    }
-
-    pub fn set_sample_count(&mut self, samples: u32) {
-        self.samples = samples;
+    pub fn set_window(&mut self, window: f32) {
+        self.window = window;
     }
 
     fn average(&self, default: Vec3) -> Vec3 {
@@ -42,5 +31,31 @@ impl CameraStabilizer {
         } else {
             default
         }
+    }
+}
+
+impl FrameCache for CameraStabilizer {
+    type Input = Vec3;
+    type Output = Vec3;
+
+    fn update(&mut self, frame_time: f32, input: Self::Input, _: Token) -> Self::Output {
+        self.samples = (self.window / frame_time).ceil() as u32;
+        self.buf.push_front(input);
+        self.buf.truncate(self.samples as usize);
+        self.average(input)
+    }
+
+    fn get_cached(&mut self, _frame_time: f32, input: Self::Input, _: Token) -> Self::Output {
+        self.average(input)
+    }
+
+    fn reset(&mut self, _: Token) {
+        self.buf.clear();
+    }
+}
+
+impl Default for CameraStabilizer {
+    fn default() -> Self {
+        Self::new(Self::DEFAULT_WINDOW)
     }
 }

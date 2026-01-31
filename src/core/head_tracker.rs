@@ -1,46 +1,14 @@
-use std::mem;
-
 use glam::{Mat3A, Quat};
 
+use crate::core::frame_cached::{FrameCache, Token};
+
 pub struct HeadTracker {
-    frame: u64,
-    last: Quat,
+    last: Option<Quat>,
     rotation: Quat,
     rotation_target: Quat,
 }
 
 impl HeadTracker {
-    pub fn next_tracked(&mut self, frame: u64, frame_time: f32, new: Mat3A) -> Quat {
-        let prev_frame = mem::replace(&mut self.frame, frame);
-
-        if prev_frame != frame {
-            let new = Quat::from_mat3a(&new);
-
-            if prev_frame + 1 != frame {
-                self.last = new;
-            }
-
-            self.rotation_target *= self.last.inverse() * new;
-            self.rotation_target = self.rotation_target.normalize();
-            self.last = new;
-            self.rotate_towards_target(frame_time);
-        }
-
-        self.rotation
-    }
-
-    pub fn next_untracked(&mut self, frame: u64, frame_time: f32, new: Mat3A) -> Quat {
-        let prev_frame = mem::replace(&mut self.frame, frame);
-
-        if prev_frame != frame {
-            self.rotation_target = Quat::IDENTITY;
-            self.rotate_towards_target(frame_time);
-            self.last = Quat::from_mat3a(&new);
-        }
-
-        self.rotation
-    }
-
     fn rotate_towards_target(&mut self, frame_time: f32) {
         let distance = self.rotation.angle_between(self.rotation_target);
         let step = rip(distance, 0.0, 1.0, frame_time);
@@ -49,11 +17,44 @@ impl HeadTracker {
     }
 }
 
+impl FrameCache for HeadTracker {
+    type Input = (Mat3A, bool);
+    type Output = Quat;
+
+    fn update(
+        &mut self,
+        frame_time: f32,
+        (input, is_tracked): Self::Input,
+        _: Token,
+    ) -> Self::Output {
+        let input = Quat::from_mat3a(&input);
+
+        if is_tracked && let Some(last) = self.last {
+            self.rotation_target *= last.inverse() * input;
+            self.rotation_target = self.rotation_target.normalize();
+        } else {
+            self.rotation_target = Quat::IDENTITY;
+        }
+
+        self.last = Some(input);
+        self.rotate_towards_target(frame_time);
+
+        self.rotation
+    }
+
+    fn get_cached(&mut self, _frame_time: f32, _input: Self::Input, _: Token) -> Self::Output {
+        self.rotation
+    }
+
+    fn reset(&mut self, _: Token) {
+        self.last = None;
+    }
+}
+
 impl Default for HeadTracker {
     fn default() -> Self {
         Self {
-            frame: 0,
-            last: Quat::IDENTITY,
+            last: None,
             rotation: Quat::IDENTITY,
             rotation_target: Quat::IDENTITY,
         }
