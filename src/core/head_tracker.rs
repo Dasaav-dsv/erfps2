@@ -25,6 +25,8 @@ pub struct HeadTracker {
 pub enum TrackingKind {
     Global,
     PlayerRelative,
+    PlayerRelativeFast,
+
     #[default]
     None,
 }
@@ -49,7 +51,7 @@ impl HeadTracker {
         self.stabilizer.set_window(window);
     }
 
-    fn rotate_towards_target(&mut self, frame_time: f32) {
+    fn rotate_towards_target(&mut self, speed: f32, frame_time: f32) {
         let angle = self.rotation_target.angle_between(Quat::IDENTITY);
 
         let center_bias_until = PI / 2.0 * 3.0;
@@ -64,7 +66,7 @@ impl HeadTracker {
         };
 
         let distance = self.rotation.angle_between(biased_target);
-        let step = rip(distance, 0.0, 1.0, frame_time);
+        let step = rip(distance, 0.0, speed, frame_time);
 
         self.rotation = self.rotation.rotate_towards(biased_target, step);
     }
@@ -97,7 +99,10 @@ impl FrameCache for HeadTracker {
             self.last_tracking_kind = args.tracking_kind;
         }
 
-        if args.tracking_kind == TrackingKind::PlayerRelative {
+        if matches!(
+            args.tracking_kind,
+            TrackingKind::PlayerRelative | TrackingKind::PlayerRelativeFast
+        ) {
             let player_rotation = Quat::from_mat3a(&args.player_matrix.rotation());
             input = player_rotation.inverse() * input;
         }
@@ -108,11 +113,20 @@ impl FrameCache for HeadTracker {
             self.rotation_target *= last.inverse() * input;
             self.rotation_target = self.rotation_target.normalize();
         } else {
-            self.rotation_target = Quat::IDENTITY;
+            self.rotation_target = self
+                .rotation_target
+                .slerp(Quat::IDENTITY, frame_time * 10.0);
         }
 
         self.last = Some(input);
-        self.rotate_towards_target(frame_time);
+        self.rotate_towards_target(
+            frame_time,
+            if args.tracking_kind == TrackingKind::PlayerRelativeFast {
+                1.4
+            } else {
+                1.0
+            },
+        );
 
         self.output.insert(Output {
             tracking_rotation: self.rotation,
@@ -138,11 +152,15 @@ impl From<&CoreLogicContext<'_, World<'_>>> for Args {
 
         let tracking_kind = if context.player.is_in_throw()
             || (context.config.track_damage && context.has_state(BehaviorState::Damage))
-            || (context.config.track_dodges && context.has_state(BehaviorState::Evasion))
+            || (context.config.track_damage
+                && context.has_state(BehaviorState::DeathAnim)
+                && !context.has_state(BehaviorState::DeathIdle))
         {
             TrackingKind::Global
         } else if context.config.track_attacks && context.has_state(BehaviorState::Attack) {
             TrackingKind::PlayerRelative
+        } else if context.config.track_dodges && context.has_state(BehaviorState::Evasion) {
+            TrackingKind::PlayerRelativeFast
         } else {
             TrackingKind::None
         };
