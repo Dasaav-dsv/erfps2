@@ -13,7 +13,7 @@ use crate::{
 
 #[derive(Default)]
 pub struct HeadTracker {
-    last: Option<Quat>,
+    rotation_previous: Option<Quat>,
     rotation: Quat,
     rotation_target: Quat,
     last_rotation_args: RotationArgs,
@@ -22,19 +22,10 @@ pub struct HeadTracker {
 }
 
 #[derive(Copy, Clone, Default, PartialEq)]
-pub enum TrackingKind {
-    Global,
-    PlayerRelative,
-    PlayerRelativeFast,
-
-    #[default]
-    None,
-}
-
-#[derive(Copy, Clone, Default, PartialEq)]
 pub struct RotationArgs {
     track: bool,
     speed: f32,
+    center_bias_until: f32,
     player_local: bool,
 }
 
@@ -54,14 +45,60 @@ pub struct Output {
 }
 
 impl HeadTracker {
+    fn stabilize_head(&mut self, frame_time: f32, args: &Args) -> Vec3 {
+        let head_position = args.head_matrix.translation();
+
+        let player_matrix = Mat4::from(args.model_matrix);
+
+        let mut local_head_pos = player_matrix.inverse().project_point3(head_position);
+
+        let stabilized = self.stabilizer.update(frame_time, local_head_pos);
+        let delta = stabilized - local_head_pos;
+
+        local_head_pos += delta.clamp_length_max(args.stabilizer_factor * 0.1);
+
+        player_matrix.project_point3(local_head_pos)
+    }
+
     pub fn set_stabilizer_window(&mut self, window: f32) {
         self.stabilizer.set_window(window);
     }
 
-    fn rotate_towards_target(&mut self, speed: f32, frame_time: f32) {
-        let angle = self.rotation_target.angle_between(Quat::IDENTITY);
+    fn track_head_rotation(&mut self, frame_time: f32, args: &Args) {
+        let mut input = Quat::from_mat3a(&args.head_matrix.rotation());
 
-        let center_bias_until = PI / 2.0 * 3.0;
+        if args.rotation.player_local != self.last_rotation_args.player_local {
+            self.last_rotation_args = args.rotation;
+            self.rotation_previous = None;
+            self.rotation_target = Quat::IDENTITY;
+        }
+
+        if args.rotation.player_local {
+            let player_rotation = Quat::from_mat3a(&args.player_matrix.rotation());
+            input = player_rotation.inverse() * input;
+        }
+
+        if let Some(last) = self.rotation_previous
+            && args.rotation.track
+        {
+            self.rotation_target *= last.inverse() * input;
+            self.rotation_target = self.rotation_target.normalize();
+        } else {
+            self.rotation_target = self
+                .rotation_target
+                .slerp(Quat::IDENTITY, frame_time * 10.0);
+        }
+
+        self.rotation_previous = Some(input);
+        self.rotate_towards_target(
+            frame_time,
+            args.rotation.speed,
+            args.rotation.center_bias_until,
+        );
+    }
+
+    fn rotate_towards_target(&mut self, speed: f32, frame_time: f32, center_bias_until: f32) {
+        let angle = self.rotation_target.angle_between(Quat::IDENTITY);
 
         let biased_target = if angle < center_bias_until {
             self.rotation_target.rotate_towards(
@@ -84,47 +121,13 @@ impl FrameCache for HeadTracker {
     type Output<'a> = &'a Output;
 
     fn update(&mut self, frame_time: f32, args: Self::Input) -> Self::Output<'_> {
-        let mut head_position = args.head_matrix.translation();
-
-        if args.use_stabilizer {
-            let player_matrix = Mat4::from(args.model_matrix);
-
-            let mut local_head_pos = player_matrix.inverse().project_point3(head_position);
-
-            let stabilized = self.stabilizer.update(frame_time, local_head_pos);
-            let delta = stabilized - local_head_pos;
-
-            local_head_pos += delta.clamp_length_max(args.stabilizer_factor * 0.1);
-
-            head_position = player_matrix.project_point3(local_head_pos);
-        }
-
-        let mut input = Quat::from_mat3a(&args.head_matrix.rotation());
-
-        if args.rotation.player_local != self.last_rotation_args.player_local {
-            self.last_rotation_args = args.rotation;
-            self.last = None;
-            self.rotation_target = Quat::IDENTITY;
-        }
-
-        if args.rotation.player_local {
-            let player_rotation = Quat::from_mat3a(&args.player_matrix.rotation());
-            input = player_rotation.inverse() * input;
-        }
-
-        if let Some(last) = self.last
-            && args.rotation.track
-        {
-            self.rotation_target *= last.inverse() * input;
-            self.rotation_target = self.rotation_target.normalize();
+        let head_position = if args.use_stabilizer {
+            self.stabilize_head(frame_time, &args)
         } else {
-            self.rotation_target = self
-                .rotation_target
-                .slerp(Quat::IDENTITY, frame_time * 10.0);
-        }
+            args.head_matrix.translation()
+        };
 
-        self.last = Some(input);
-        self.rotate_towards_target(frame_time, args.rotation.speed);
+        self.track_head_rotation(frame_time, &args);
 
         self.output.insert(Output {
             tracking_rotation: self.rotation,
@@ -139,7 +142,7 @@ impl FrameCache for HeadTracker {
 
     fn reset(&mut self) {
         self.stabilizer.reset();
-        self.last = None;
+        self.rotation_previous = None;
     }
 }
 
@@ -157,24 +160,28 @@ impl From<&CoreLogicContext<'_, World<'_>>> for Args {
             RotationArgs {
                 track: true,
                 speed: 1.0,
+                center_bias_until: PI,
                 player_local: false,
             }
         } else if context.config.track_attacks && context.has_state(BehaviorState::Attack) {
             RotationArgs {
                 track: true,
                 speed: 1.0,
+                center_bias_until: PI * 3.0 / 2.0,
                 player_local: true,
             }
         } else if context.config.track_dodges && context.has_state(BehaviorState::Evasion) {
             RotationArgs {
                 track: true,
                 speed: 1.4,
+                center_bias_until: PI * 3.0 / 2.0,
                 player_local: false,
             }
         } else {
             RotationArgs {
                 track: false,
                 speed: 1.0,
+                center_bias_until: PI * 3.0 / 2.0,
                 player_local: false,
             }
         };
