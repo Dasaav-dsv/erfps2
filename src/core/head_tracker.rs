@@ -16,7 +16,7 @@ pub struct HeadTracker {
     last: Option<Quat>,
     rotation: Quat,
     rotation_target: Quat,
-    last_tracking_kind: TrackingKind,
+    last_rotation_args: RotationArgs,
     stabilizer: CameraStabilizer,
     output: Option<Output>,
 }
@@ -31,13 +31,20 @@ pub enum TrackingKind {
     None,
 }
 
+#[derive(Copy, Clone, Default, PartialEq)]
+pub struct RotationArgs {
+    track: bool,
+    speed: f32,
+    player_local: bool,
+}
+
 pub struct Args {
     pub model_matrix: F32ModelMatrix,
     pub head_matrix: F32ModelMatrix,
     pub player_matrix: F32ModelMatrix,
     pub stabilizer_factor: f32,
     pub use_stabilizer: bool,
-    pub tracking_kind: TrackingKind,
+    pub rotation: RotationArgs,
 }
 
 pub struct Output {
@@ -94,21 +101,19 @@ impl FrameCache for HeadTracker {
 
         let mut input = Quat::from_mat3a(&args.head_matrix.rotation());
 
-        if args.tracking_kind != self.last_tracking_kind {
+        if args.rotation.player_local != self.last_rotation_args.player_local {
+            self.last_rotation_args = args.rotation;
             self.last = None;
-            self.last_tracking_kind = args.tracking_kind;
+            self.rotation_target = Quat::IDENTITY;
         }
 
-        if matches!(
-            args.tracking_kind,
-            TrackingKind::PlayerRelative | TrackingKind::PlayerRelativeFast
-        ) {
+        if args.rotation.player_local {
             let player_rotation = Quat::from_mat3a(&args.player_matrix.rotation());
             input = player_rotation.inverse() * input;
         }
 
-        if args.tracking_kind != TrackingKind::None
-            && let Some(last) = self.last
+        if let Some(last) = self.last
+            && args.rotation.track
         {
             self.rotation_target *= last.inverse() * input;
             self.rotation_target = self.rotation_target.normalize();
@@ -119,14 +124,7 @@ impl FrameCache for HeadTracker {
         }
 
         self.last = Some(input);
-        self.rotate_towards_target(
-            frame_time,
-            if args.tracking_kind == TrackingKind::PlayerRelativeFast {
-                1.4
-            } else {
-                1.0
-            },
-        );
+        self.rotate_towards_target(frame_time, args.rotation.speed);
 
         self.output.insert(Output {
             tracking_rotation: self.rotation,
@@ -150,19 +148,35 @@ impl From<&CoreLogicContext<'_, World<'_>>> for Args {
         let head_matrix = context.player.head_matrix();
         let model_matrix = context.player.model_matrix();
 
-        let tracking_kind = if context.player.is_in_throw()
+        let rotation_args = if context.player.is_in_throw()
             || (context.config.track_damage && context.has_state(BehaviorState::Damage))
             || (context.config.track_damage
                 && context.has_state(BehaviorState::DeathAnim)
                 && !context.has_state(BehaviorState::DeathIdle))
         {
-            TrackingKind::Global
+            RotationArgs {
+                track: true,
+                speed: 1.0,
+                player_local: false,
+            }
         } else if context.config.track_attacks && context.has_state(BehaviorState::Attack) {
-            TrackingKind::PlayerRelative
+            RotationArgs {
+                track: true,
+                speed: 1.0,
+                player_local: true,
+            }
         } else if context.config.track_dodges && context.has_state(BehaviorState::Evasion) {
-            TrackingKind::PlayerRelativeFast
+            RotationArgs {
+                track: true,
+                speed: 1.4,
+                player_local: false,
+            }
         } else {
-            TrackingKind::None
+            RotationArgs {
+                track: false,
+                speed: 1.0,
+                player_local: false,
+            }
         };
 
         Self {
@@ -171,7 +185,7 @@ impl From<&CoreLogicContext<'_, World<'_>>> for Args {
             player_matrix: context.player.chr_ctrl.model_matrix,
             stabilizer_factor: context.config.stabilizer_factor,
             use_stabilizer: context.config.use_stabilizer,
-            tracking_kind,
+            rotation: rotation_args,
         }
     }
 }
