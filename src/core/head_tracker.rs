@@ -143,6 +143,7 @@ impl FrameCache for HeadTracker {
     fn reset(&mut self) {
         self.stabilizer.reset();
         self.rotation_previous = None;
+        self.rotation_target = Quat::IDENTITY;
     }
 }
 
