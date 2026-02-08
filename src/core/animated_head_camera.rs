@@ -71,7 +71,7 @@ impl AnimatedHeadCamera {
             ((1.05 - head_pitch.abs() / PI) * (1.05 - head_roll.abs() / PI)).clamp(0.0, 1.0);
 
         let world_contrib = Vec3::new(0.0, 0.1, 0.0);
-        let head_contrib = Vec3::new(0.0, -0.1 * head_upright, -0.05);
+        let head_contrib = Vec3::new(0.0, -0.1 * head_upright + 0.1 * (1.0 - head_upright), -0.05);
         let cam_contrib =
             Vec3::new(0.0, 0.03 + cam_pitch_exp, -0.025 + cam_pitch.abs() / 12.0) * head_upright;
 
