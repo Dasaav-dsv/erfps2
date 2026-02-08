@@ -42,6 +42,7 @@ impl BehaviorState {
     pub fn try_from_state_name(name: &str) -> Option<Self> {
         match name {
             "Attack_SM" => Some(Self::Attack),
+            "SwordArts_SM" => Some(Self::Attack),
             a @ _ if a.starts_with("JumpAttack_") => Some(Self::Attack),
 
             "Death_SM" => Some(Self::DeathAnim),
