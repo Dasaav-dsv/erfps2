@@ -1,5 +1,4 @@
 use std::{
-    f32::consts::PI,
     ffi::{CStr, c_char},
     mem,
     ops::{Deref, DerefMut},
@@ -12,14 +11,14 @@ use eldenring::cs::{
     FieldInsHandle, FieldInsType, GameDataMan, LockTgtMan, PlayerIns,
 };
 use fromsoftware_shared::{F32ViewMatrix, FromStatic};
-use glam::{EulerRot, Mat3A, Mat4, Quat, Vec3, Vec4};
+use glam::{Mat3A, Vec3, Vec4};
 
 use crate::{
     config::{Config, CrosshairKind, updater::ConfigUpdater},
     core::{
+        animated_head_camera::AnimatedHeadCamera,
         behavior::{BehaviorStateSet, BehaviorStates},
         frame_cached::FrameCached,
-        head_tracker::HeadTracker,
         time::{FrameTime, TransTime},
         world::{FromWorld, Void, World, WorldState},
     },
@@ -36,9 +35,9 @@ pub use behavior::BehaviorState;
 
 pub mod world;
 
+mod animated_head_camera;
 mod behavior;
 mod frame_cached;
-mod head_tracker;
 mod stabilizer;
 mod time;
 
@@ -58,7 +57,7 @@ pub struct State {
     should_transition: bool,
     frame_time: FrameCached<FrameTime>,
     trans_time: FrameCached<TransTime>,
-    head_tracker: FrameCached<HeadTracker>,
+    animated_head_camera: FrameCached<AnimatedHeadCamera>,
     behavior_states: BehaviorStates,
     saved_angle_limit: Option<f32>,
 }
@@ -148,10 +147,11 @@ where
         let frame_time = self.frame_time.measure();
 
         let stabilizer_window = self.config.stabilizer_window;
-        self.head_tracker.set_stabilizer_window(stabilizer_window);
+        self.animated_head_camera
+            .set_stabilizer_window(stabilizer_window);
 
         self.trans_time.next_frame(frame_time);
-        self.head_tracker.next_frame(frame_time);
+        self.animated_head_camera.next_frame(frame_time);
 
         self.update_fov_correction();
     }
@@ -302,63 +302,26 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
         }
     }
 
-    pub fn camera_position(&mut self) -> (F32ViewMatrix, Quat) {
-        let camera_rotation = Quat::from_mat3a(&self.chr_cam.pers_cam.matrix.rotation());
-
-        let tracker_args = (&*self).into();
-        let output = self.head_tracker.get(tracker_args);
-
-        let head_rotation = output.head_matrix.rotation::<Mat3A>();
-        let mut head_position = output.stabilized_head_position;
-
-        let camera_rotation = camera_rotation * output.tracking_rotation;
-
-        let cam_pitch = camera_rotation.to_euler(EulerRot::ZXY).1;
-        let cam_pitch_exp = (cam_pitch.abs() / 3.0).powi(2);
-
-        let (head_roll, head_pitch, _) = output
-            .head_matrix
-            .rotation::<Mat3A>()
-            .to_euler(EulerRot::ZXY);
-
-        let head_upright =
-            ((1.05 - head_pitch.abs() / PI) * (1.05 - head_roll.abs() / PI)).clamp(0.0, 1.0);
-
-        let world_contrib = Vec3::new(0.0, 0.1, 0.0);
-        let head_contrib = Vec3::new(0.0, -0.1 * head_upright, -0.05);
-        let cam_contrib =
-            Vec3::new(0.0, 0.03 + cam_pitch_exp, -0.025 + cam_pitch.abs() / 12.0) * head_upright;
-
-        head_position += world_contrib
-            + head_rotation.transpose() * head_contrib
-            + camera_rotation.inverse() * cam_contrib;
-
-        (
-            Mat4::from_rotation_translation(camera_rotation, head_position).into(),
-            output.tracking_rotation,
-        )
-    }
-
     pub fn update_cs_cam(&mut self) {
         if !self.first_person() {
             return;
         }
-
-        let (camera_pos, tracking_rotation) = self.camera_position();
+        let animated_head_camera = {
+            let args = (&*self).into();
+            *self.animated_head_camera.get(args)
+        };
 
         if self.config.soft_lock_on || !self.lock_tgt.is_locked_on {
-            let lock_on_pos = Vec4::from(camera_pos.3)
-                + tracking_rotation
-                    .mul_vec3(Vec4::from(self.chr_cam.pers_cam.matrix.2).truncate() * 10.0)
-                    .extend(0.0);
+            let lock_on_pos = Vec4::from(animated_head_camera.camera_matrix.3)
+                + animated_head_camera.aim_direction * 10.0;
 
             self.player.set_lock_on_target_position(lock_on_pos);
         }
 
         self.cs_cam.pers_cam_1.matrix = self.chr_cam.pers_cam.matrix;
 
-        self.cs_cam.pers_cam_1.matrix.3 = camera_pos.3;
-        self.chr_cam.pers_cam.matrix.3 = camera_pos.3;
+        self.cs_cam.pers_cam_1.matrix.3 = animated_head_camera.camera_matrix.3;
+        self.chr_cam.pers_cam.matrix.3 = animated_head_camera.camera_matrix.3;
 
         *self.player.aim_matrix_mut() = self.cs_cam.pers_cam_1.matrix;
 
@@ -389,18 +352,21 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
             self.player.make_transparent(is_dodging);
         }
 
-        let (camera_pos, _) = self.camera_position();
+        let animated_head_camera = {
+            let args = (&*self).into();
+            *self.animated_head_camera.get(args)
+        };
 
         if self.config.restricted_sprint {
-            self.restrict_sprint(camera_pos.rotation());
+            self.restrict_sprint(animated_head_camera.camera_matrix.rotation());
         }
 
         if self.config.soft_lock_on {
-            self.soft_lock_on(camera_pos);
+            self.soft_lock_on(animated_head_camera.camera_matrix);
         }
 
-        self.cs_cam.pers_cam_1.matrix = camera_pos;
-        self.chr_cam.pers_cam.matrix = camera_pos;
+        self.cs_cam.pers_cam_1.matrix = animated_head_camera.camera_matrix;
+        self.chr_cam.pers_cam.matrix = animated_head_camera.camera_matrix;
 
         let fov = self.fov();
 

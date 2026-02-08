@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
 use fromsoftware_shared::F32ModelMatrix;
-use glam::{Mat4, Quat, Vec3};
+use glam::{EulerRot, Mat3A, Mat4, Quat, Vec3, Vec4};
 
 use crate::{
     core::{
@@ -12,7 +12,7 @@ use crate::{
 };
 
 #[derive(Default)]
-pub struct HeadTracker {
+pub struct AnimatedHeadCamera {
     rotation_previous: Option<Quat>,
     rotation: Quat,
     rotation_target: Quat,
@@ -33,18 +33,58 @@ pub struct Args {
     pub model_matrix: F32ModelMatrix,
     pub head_matrix: F32ModelMatrix,
     pub player_matrix: F32ModelMatrix,
+    pub camera_matrix: F32ModelMatrix,
     pub stabilizer_factor: f32,
     pub use_stabilizer: bool,
     pub rotation: RotationArgs,
 }
 
+#[derive(Copy, Clone)]
 pub struct Output {
-    pub tracking_rotation: Quat,
-    pub stabilized_head_position: Vec3,
-    pub head_matrix: F32ModelMatrix,
+    pub camera_matrix: F32ModelMatrix,
+    pub aim_direction: Vec4,
 }
 
-impl HeadTracker {
+impl AnimatedHeadCamera {
+    pub fn calculate(&mut self, frame_time: f32, args: &Args) -> Output {
+        let camera_rotation_untracked = Quat::from_mat3a(&args.camera_matrix.rotation());
+
+        let mut head_position = if args.use_stabilizer {
+            self.stabilize_head(frame_time, &args)
+        } else {
+            args.head_matrix.translation()
+        };
+
+        let tracked_rotation = self.track_head_rotation(frame_time, &args);
+
+        let head_rotation = args.head_matrix.rotation::<Mat3A>();
+
+        let camera_rotation = camera_rotation_untracked * tracked_rotation;
+
+        let cam_pitch = camera_rotation.to_euler(EulerRot::ZXY).1;
+        let cam_pitch_exp = (cam_pitch.abs() / 3.0).powi(2);
+
+        let (head_roll, head_pitch, _) =
+            args.head_matrix.rotation::<Mat3A>().to_euler(EulerRot::ZXY);
+
+        let head_upright =
+            ((1.05 - head_pitch.abs() / PI) * (1.05 - head_roll.abs() / PI)).clamp(0.0, 1.0);
+
+        let world_contrib = Vec3::new(0.0, 0.1, 0.0);
+        let head_contrib = Vec3::new(0.0, -0.1 * head_upright, -0.05);
+        let cam_contrib =
+            Vec3::new(0.0, 0.03 + cam_pitch_exp, -0.025 + cam_pitch.abs() / 12.0) * head_upright;
+
+        head_position += world_contrib
+            + head_rotation.transpose() * head_contrib
+            + camera_rotation.inverse() * cam_contrib;
+
+        Output {
+            camera_matrix: Mat4::from_rotation_translation(camera_rotation, head_position).into(),
+            aim_direction: args.camera_matrix.2.into(),
+        }
+    }
+
     fn stabilize_head(&mut self, frame_time: f32, args: &Args) -> Vec3 {
         let head_position = args.head_matrix.translation();
 
@@ -64,7 +104,7 @@ impl HeadTracker {
         self.stabilizer.set_window(window);
     }
 
-    fn track_head_rotation(&mut self, frame_time: f32, args: &Args) {
+    fn track_head_rotation(&mut self, frame_time: f32, args: &Args) -> Quat {
         let mut input = Quat::from_mat3a(&args.head_matrix.rotation());
 
         if args.rotation.player_local != self.last_rotation_args.player_local {
@@ -95,6 +135,8 @@ impl HeadTracker {
             args.rotation.speed,
             args.rotation.center_bias_until,
         );
+
+        self.rotation
     }
 
     fn rotate_towards_target(&mut self, speed: f32, frame_time: f32, center_bias_until: f32) {
@@ -116,24 +158,13 @@ impl HeadTracker {
     }
 }
 
-impl FrameCache for HeadTracker {
+impl FrameCache for AnimatedHeadCamera {
     type Input = Args;
     type Output<'a> = &'a Output;
 
     fn update(&mut self, frame_time: f32, args: Self::Input) -> Self::Output<'_> {
-        let head_position = if args.use_stabilizer {
-            self.stabilize_head(frame_time, &args)
-        } else {
-            args.head_matrix.translation()
-        };
-
-        self.track_head_rotation(frame_time, &args);
-
-        self.output.insert(Output {
-            tracking_rotation: self.rotation,
-            stabilized_head_position: head_position,
-            head_matrix: args.head_matrix,
-        })
+        let output = self.calculate(frame_time, &args);
+        self.output.insert(output)
     }
 
     fn get_cached(&mut self, _frame_time: f32, _input: Self::Input) -> Self::Output<'_> {
@@ -151,6 +182,7 @@ impl From<&CoreLogicContext<'_, World<'_>>> for Args {
     fn from(context: &CoreLogicContext<'_, World<'_>>) -> Self {
         let head_matrix = context.player.head_matrix();
         let model_matrix = context.player.model_matrix();
+        let camera_matrix = context.chr_cam.pers_cam.matrix;
 
         let rotation_args = if context.player.is_in_throw()
             || (context.config.track_damage && context.has_state(BehaviorState::Damage))
@@ -191,6 +223,7 @@ impl From<&CoreLogicContext<'_, World<'_>>> for Args {
             head_matrix,
             model_matrix,
             player_matrix: context.player.chr_ctrl.model_matrix,
+            camera_matrix: camera_matrix,
             stabilizer_factor: context.config.stabilizer_factor,
             use_stabilizer: context.config.use_stabilizer,
             rotation: rotation_args,
