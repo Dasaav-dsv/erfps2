@@ -197,7 +197,6 @@ unsafe fn update_lock_tgt(original: &dyn Fn()) {
             && !context.player.is_riding()
             && !context.player.has_action_request()
             && !context.player.is_in_throw()
-            && !context.has_state(BehaviorState::Evasion)
             && !context.has_state(BehaviorState::Gesture)
             && context.player.mimicry_asset < 0
         {
