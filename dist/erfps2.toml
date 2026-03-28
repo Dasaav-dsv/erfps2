@@ -57,6 +57,11 @@ restricted_sprint = false
 # Possible value range: 0.95 - 1.05
 height_multiplier = 1.0
 
+# Vertical camera offset relative to the head
+# -0.06 is about the height of the players eyes
+# Possible value range: -0.1 - 0.1
+camera_offset = 0.0
+
 # Adjust arm position to bring held weapons into camera view
 position_arms = true
 
