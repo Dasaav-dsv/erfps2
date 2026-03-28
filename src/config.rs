@@ -16,6 +16,8 @@ pub struct Config {
 
     pub extra_player_height: f32,
 
+    pub position_arms: bool,
+
     pub start_in_first_person: bool,
 
     pub show_tutorial: bool,
@@ -94,6 +96,7 @@ impl From<toml::Config> for Config {
             fov,
             angle_limit: const { [f32::to_radians(-80.0), f32::to_radians(70.0)] },
             extra_player_height,
+            position_arms: config.player.position_arms,
             start_in_first_person: config.gameplay.start_in_first_person,
             show_tutorial: config.gameplay.show_tutorial,
             prioritize_lock_on: config.gameplay.prioritize_lock_on,

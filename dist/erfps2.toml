@@ -57,6 +57,9 @@ restricted_sprint = false
 # Possible value range: 0.95 - 1.05
 height_multiplier = 1.0
 
+# Adjust arm position to bring held weapons into camera view
+position_arms = true
+
 [stabilizer]
 # Stabilization of camera movement in first person.
 enabled = true
