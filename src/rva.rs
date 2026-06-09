@@ -30,8 +30,8 @@ impl Deref for Rva {
         });
 
         match *GAME_VERSION {
-            GameVersion::Ww261 => &self.ww,
-            GameVersion::Jp2611 => &self.jp,
+            GameVersion::Ww262 => &self.ww,
+            GameVersion::Jp2621 => &self.jp,
         }
     }
 }
