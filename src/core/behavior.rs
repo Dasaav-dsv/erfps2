@@ -5,6 +5,8 @@ use strum::EnumCount;
 pub enum BehaviorState {
     Attack,
     Damage,
+    DeathAnim,
+    DeathIdle,
     Evasion,
     Gesture,
 }
@@ -39,7 +41,13 @@ impl BehaviorStates {
 impl BehaviorState {
     pub fn try_from_state_name(name: &str) -> Option<Self> {
         match name {
+            _ if name.starts_with("JumpAttack_") => Some(Self::Attack),
             "Attack_SM" => Some(Self::Attack),
+            "SwordArts_SM" => Some(Self::Attack),
+
+            "Death_SM" => Some(Self::DeathAnim),
+            "DeathIdle_Selector" => Some(Self::DeathIdle),
+
             "Damage_SM" => Some(Self::Damage),
             "Evasion_SM" | "Stealth_Rolling_CMSG" => Some(Self::Evasion),
             "Gesture_SM" => Some(Self::Gesture),
