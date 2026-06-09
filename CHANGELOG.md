@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.3.2] 2026-06-09
+
+### Added
+
+- Support for ELDEN RING 1.16.2
+
+### Removed
+
+- Support for ELDEN RING 1.16.1
+
 ## [0.3.1] 2026-03-11
 
 ### Fixed
