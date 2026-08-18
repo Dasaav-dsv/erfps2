@@ -1,6 +1,6 @@
 [package]
 name = "erfps2"
-version = "0.3.2"
+version = "0.3.3"
 edition = "2024"
 authors = ["Dasaav"]
 license = "MIT OR Apache-2.0"
@@ -12,7 +12,7 @@ crate-type = ["cdylib"]
 eldenring.path = "fromsoftware-rs/crates/eldenring"
 eyre = "0.6.12"
 fromsoftware-shared.path = "fromsoftware-rs/crates/shared"
-glam = "0.30.9"
+glam = "0.33.4"
 simplelog = { version = "0.12.2", default-features = false }
 libhotpatch = { version = "1.2.0", default-features = false }
 log = "0.4.28"
@@ -22,8 +22,8 @@ windows = { version = "0.62.2", features = [
     "Win32_System_Memory",
     "Win32_UI_WindowsAndMessaging",
 ] }
-winhook = "0.1.2"
-toml = "0.9.11"
+diversion = { version = "0.2.0", features = ["custom"] }
+toml = "1.1.4"
 serde = { version = "1.0.228", features = ["serde_derive"] }
 closure-ffi = "5.0.1"
 pelite = "0.10.0"
@@ -31,6 +31,7 @@ strum = { version = "0.27.2", features = ["derive"] }
 bitvec = "1.0.1"
 portable-atomic = { version = "1.13.0", default-features = false, features = [
     "std",
+    "float",
 ] }
 
 [profile.release]

@@ -1,21 +1,19 @@
-use std::mem;
-
 use closure_ffi::traits::{FnPtr, FnThunk};
-use winhook::{CConv, HookInstaller};
+use diversion::{
+    hook::{Static, leak::StaticHook},
+    install,
+};
 
 #[track_caller]
-pub unsafe fn hook<F, C, H>(f: F, c: C)
+pub unsafe fn hook<F, C, H>(f: F, c: C) -> eyre::Result<()>
 where
-    F: FnPtr + CConv + 'static,
-    C: FnOnce(F) -> H + 'static,
+    F: FnPtr + 'static,
+    C: FnOnce(Static<F>) -> H + 'static,
     H: Send + Sync + 'static,
     (F::CC, H): FnThunk<F> + Send + Sync + 'static,
 {
     unsafe {
-        HookInstaller::for_function(f)
-            .enable(true)
-            .install(c)
-            .map(mem::forget)
-            .unwrap()
+        install(f)?.static_hook(c);
+        Ok(())
     }
 }

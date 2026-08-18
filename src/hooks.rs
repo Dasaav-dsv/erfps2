@@ -31,74 +31,74 @@ pub fn hook_camera(program: Program) -> eyre::Result<()> {
         let update = program
             .derva_ptr::<unsafe extern "C" fn(*mut c_void, *const FD4Time)>(CAMERA_STEP_UPDATE_RVA);
 
-        hook(update, |original| {
-            move |param_1, param_2| update_camera(&|| original(param_1, param_2))
-        });
+        hook(update, |hook| {
+            move |param_1, param_2| update_camera(&|| hook.call_original((param_1, param_2)))
+        })?;
 
         let mms_update =
             program.derva_ptr::<unsafe extern "C" fn(*mut c_void)>(MMS_UPDATE_CHR_CAM_RVA);
 
-        hook(mms_update, |original| {
-            move |param_1| update_move_map_step(&|| original(param_1))
-        });
+        hook(mms_update, |hook| {
+            move |param_1| update_move_map_step(&|| hook.call_original((param_1,)))
+        })?;
 
         let chr_model_pos_update =
             program.derva_ptr::<unsafe extern "C" fn(*mut ChrCtrl)>(UPDATE_CHR_MODEL_POS_RVA);
 
-        hook(chr_model_pos_update, |original| {
-            move |param_1| update_chr_model_pos(param_1, &|| original(param_1))
-        });
+        hook(chr_model_pos_update, |hook| {
+            move |param_1| update_chr_model_pos(param_1, &|| hook.call_original((param_1,)))
+        })?;
 
         let lock_tgt_update =
             program.derva_ptr::<unsafe extern "C" fn(*mut c_void, f32)>(UPDATE_LOCK_TGT_RVA);
 
-        hook(lock_tgt_update, |original| {
-            move |param_1, param_2| update_lock_tgt(&|| original(param_1, param_2))
-        });
+        hook(lock_tgt_update, |hook| {
+            move |param_1, param_2| update_lock_tgt(&|| hook.call_original((param_1, param_2)))
+        })?;
 
         let chr_follow_cam_update =
             program.derva_ptr::<unsafe extern "C" fn(*mut ChrExFollowCam)>(UPDATE_FOLLOW_CAM_RVA);
 
-        hook(chr_follow_cam_update, |original| {
-            move |param_1| update_chr_follow_cam(&mut *param_1, &|| original(param_1))
-        });
+        hook(chr_follow_cam_update, |hook| {
+            move |param_1| update_chr_follow_cam(&mut *param_1, &|| hook.call_original((param_1,)))
+        })?;
 
         let fe_man_update = program
             .derva_ptr::<unsafe extern "C" fn(*mut c_void, f32, *mut bool, *mut c_void)>(
                 UPDATE_FE_MAN_RVA,
             );
 
-        hook(fe_man_update, |original| {
+        hook(fe_man_update, |hook| {
             move |param_1, param_2, param_3, param_4| {
                 update_fe_man();
-                original(param_1, param_2, param_3, param_4);
+                hook.call_original((param_1, param_2, param_3, param_4));
             }
-        });
+        })?;
 
         let follow_cam_follow = program
             .derva_ptr::<unsafe extern "C" fn(*mut ChrExFollowCam, f32, *mut c_void)>(
                 FOLLOW_CAM_FOLLOW_RVA,
             );
 
-        hook(follow_cam_follow, |original| {
+        hook(follow_cam_follow, |hook| {
             move |param_1, param_2, param_3| {
                 // Setting this flag disables position interpolation for the camera attach
                 // point in the function below.
                 let first_person = CoreLogic::is_first_person();
                 let reset_camera = mem::replace(&mut (*param_1).reset_camera, first_person);
 
-                original(param_1, param_2, param_3);
+                hook.call_original((param_1, param_2, param_3));
 
                 (*param_1).reset_camera = reset_camera;
             }
-        });
+        })?;
 
         let set_wwise_listener = program
             .derva_ptr::<unsafe extern "C" fn(*mut c_void, *const CSCam) -> u32>(
                 SET_WWISE_LISTENER_RVA,
             );
 
-        hook(set_wwise_listener, |original| {
+        hook(set_wwise_listener, |hook| {
             move |param_1, param_2| {
                 let mut param_2 = param_2.read();
 
@@ -106,9 +106,9 @@ pub fn hook_camera(program: Program) -> eyre::Result<()> {
                     param_2.matrix = listener;
                 }
 
-                original(param_1, &param_2)
+                hook.call_original((param_1, &param_2))
             }
-        });
+        })?;
 
         let posture_control_right =
             program
@@ -116,12 +116,12 @@ pub fn hook_camera(program: Program) -> eyre::Result<()> {
                     POSTURE_CONTROL_RIGHT_RVA,
                 );
 
-        hook(posture_control_right, |original| {
+        hook(posture_control_right, |hook| {
             move |param_1, param_2, param_3, param_4| {
                 let posture_angle = hand_posture_control(**param_1).unwrap_or(0);
-                original(param_1, param_2, param_3, param_4) + posture_angle
+                hook.call_original((param_1, param_2, param_3, param_4)) + posture_angle
             }
-        });
+        })?;
 
         let chr_root_motion = program.derva_ptr::<unsafe extern "C" fn(
             *mut CSChrPhysicsModule,
@@ -130,7 +130,7 @@ pub fn hook_camera(program: Program) -> eyre::Result<()> {
             *mut c_void,
         )>(CHR_ROOT_MOTION_RVA);
 
-        hook(chr_root_motion, |original| {
+        hook(chr_root_motion, |hook| {
             move |param_1, param_2, param_3, param_4| {
                 let mut param_3 = *param_3;
 
@@ -139,9 +139,9 @@ pub fn hook_camera(program: Program) -> eyre::Result<()> {
                     param_3 = root_motion;
                 }
 
-                original(param_1, param_2, &mut param_3, param_4);
+                hook.call_original((param_1, param_2, &mut param_3, param_4));
             }
-        });
+        })?;
     }
 
     Ok(())

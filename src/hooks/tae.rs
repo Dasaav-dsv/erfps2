@@ -19,7 +19,7 @@ pub fn hook_tae(program: Program) -> eyre::Result<()> {
     unsafe {
         let exec_one = (*vtable).exec_one;
 
-        hook(exec_one, |original| {
+        hook(exec_one, |hook| {
             move |event, mut args| {
                 let args = args.as_mut();
 
@@ -30,11 +30,11 @@ pub fn hook_tae(program: Program) -> eyre::Result<()> {
                     args.args = args_override.as_mut_ptr();
                 }
 
-                original(event, args.into());
+                hook.call_original((event, args.into()));
 
                 args.args = args_original;
             }
-        });
+        })?;
     }
 
     Ok(())
