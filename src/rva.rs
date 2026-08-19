@@ -26,7 +26,7 @@ impl Deref for Rva {
         static GAME_VERSION: LazyLock<GameVersion> = LazyLock::new(|| {
             let program = Program::current();
             GameVersion::detect(&program.into())
-                .expect("this game version is not supported; expected ELDEN RING 1.16.1")
+                .expect("this game version is not supported; expected ELDEN RING 1.16.2")
         });
 
         match *GAME_VERSION {
