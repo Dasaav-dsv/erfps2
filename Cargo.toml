@@ -22,7 +22,7 @@ windows = { version = "0.62.2", features = [
     "Win32_System_Memory",
     "Win32_UI_WindowsAndMessaging",
 ] }
-diversion = { version = "0.2.0", features = ["custom"] }
+diversion = { version = "0.2.2", features = ["custom"] }
 toml = "1.1.4"
 serde = { version = "1.0.228", features = ["serde_derive"] }
 closure-ffi = "5.0.1"

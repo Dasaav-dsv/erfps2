@@ -35,10 +35,6 @@ pattern = "4d 8b c6 41 0f 28 cf 48 8b ce e8 $ { ' } 0f b6 86 10 03 00 00"
 captures = ["", "FOLLOW_CAM_FOLLOW_RVA"]
 
 [[patterns]]
-pattern = "48 8b 05 $ { ' } 48 85 c0 74 04 48 8b 58 08 48 85 db"
-captures = ["", "GAME_DATA_MAN_RVA"]
-
-[[patterns]]
 pattern = "48 8d 44 24 40 48 89 44 24 28 41 8b 00 89 44 24 40 4c 8d 44 24 40 49 8b ca e8 $ { ' }"
 captures = ["", "GET_DMY_POS_RVA"]
 

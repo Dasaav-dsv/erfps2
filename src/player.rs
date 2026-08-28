@@ -146,14 +146,14 @@ impl PlayerExt for PlayerIns {
 
         // Toggle back of head and ears visibility (which otherwise may clip into view).
         if let Some(chr_asm_model_res) = self.chr_asm_model_res {
-            // Model mask 3 (bit 3 in the u64 at +0x58).
-            let ears_model_mask = unsafe { chr_asm_model_res.add(0x58).as_mut() };
+            // Model mask 3 (bit 3 in the u64 at +0x60).
+            let ears_model_mask = unsafe { chr_asm_model_res.add(0x60).as_mut() };
             *ears_model_mask = *ears_model_mask & !8 | (!state as u8) << 3;
-            // Model mask 36 (bit 11 in the u64 at +0x48).
-            let hood_model_mask = unsafe { chr_asm_model_res.add(0x49).as_mut() };
+            // Model mask 36 (bit 11 in the u64 at +0x50).
+            let hood_model_mask = unsafe { chr_asm_model_res.add(0x51).as_mut() };
             *hood_model_mask = *hood_model_mask & !8 | (!state as u8) << 3;
-            // Model mask ??
-            let hood_model_mask2 = unsafe { chr_asm_model_res.add(0x50).as_mut() };
+            // Model mask ?? (e.g. Black Knife special hood)
+            let hood_model_mask2 = unsafe { chr_asm_model_res.add(0x58).as_mut() };
             *hood_model_mask2 = *hood_model_mask2 & !32 | (!state as u8) << 5;
         }
     }
@@ -175,7 +175,8 @@ impl PlayerExt for PlayerIns {
         };
 
         if state {
-            for part in parts {
+            for part in &mut chr_asm_model_ins
+                .parts_model_ins {
                 enable_parts_visibilty(part, true);
             }
 

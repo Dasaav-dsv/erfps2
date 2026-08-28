@@ -1,6 +1,5 @@
 #! /bin/bash
 
-CHEAT_ENGINE_CT="$HOME/.local/bin/ER_TGA_v1.17.0.CT"
 ERFPS2_LOG_PATH="$HOME/.local/share/Steam/steamapps/common/ELDEN RING/Game/erfps2.log"
 
 DXC_PATH="/usr/bin/dxc/"
@@ -16,8 +15,6 @@ me3pid=$!
 
 tail -f "$ERFPS2_LOG_PATH" &
 tailpid=$!
-
-sleep 1.5s && protonhax run 1245620 "$CHEAT_ENGINE" "$CHEAT_ENGINE_CT" &
 
 wait $me3pid
 kill $tailpid
