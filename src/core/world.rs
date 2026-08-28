@@ -68,12 +68,12 @@ impl WorldState for World<'_> {
         state: &'s State,
         f: impl for<'lt> FnOnce(&Self::With<'lt>) -> R,
     ) -> Self::Result<R> {
-        let world_chr_man = unsafe { WorldChrMan::instance().ok()? };
+        let world_chr_man = unsafe { WorldChrMan::instance_mut().ok()? };
 
-        let cs_cam = unsafe { CSCamera::instance().ok()? };
+        let cs_cam = unsafe { CSCamera::instance_mut().ok()? };
         let chr_cam = unsafe { world_chr_man.chr_cam?.as_mut() };
-        let cs_remo = unsafe { CSRemo::instance().ok()? };
-        let lock_tgt = unsafe { LockTgtMan::instance().ok()? };
+        let cs_remo = unsafe { CSRemo::instance_mut().ok()? };
+        let lock_tgt = unsafe { LockTgtMan::instance_mut().ok()? };
         let player = world_chr_man.main_player.as_deref_mut()?;
         let state = NonNull::from_ref(state);
 
@@ -92,12 +92,12 @@ impl WorldState for World<'_> {
         state: &'s mut State,
         f: impl for<'lt> FnOnce(&mut Self::With<'lt>) -> R,
     ) -> Self::Result<R> {
-        let world_chr_man = unsafe { WorldChrMan::instance().ok()? };
+        let world_chr_man = unsafe { WorldChrMan::instance_mut().ok()? };
 
-        let cs_cam = unsafe { CSCamera::instance().ok()? };
+        let cs_cam = unsafe { CSCamera::instance_mut().ok()? };
         let chr_cam = unsafe { world_chr_man.chr_cam?.as_mut() };
-        let cs_remo = unsafe { CSRemo::instance().ok()? };
-        let lock_tgt = unsafe { LockTgtMan::instance().ok()? };
+        let cs_remo = unsafe { CSRemo::instance_mut().ok()? };
+        let lock_tgt = unsafe { LockTgtMan::instance_mut().ok()? };
         let player = world_chr_man.main_player.as_deref_mut()?;
         let state = NonNull::from_mut(state);
 

@@ -1,11 +1,29 @@
 use std::{ops::Deref, sync::LazyLock};
 
-use eldenring::version::GameVersion;
+use fromsoftware_shared::{GameVersion, LANG_ID_EN, LANG_ID_JP};
 
 use crate::program::Program;
 
 mod jp;
 mod ww;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ERGameVersion {
+    Ww270,
+    Jp2701,
+}
+
+impl GameVersion for ERGameVersion {
+    const NAME: &'static str = "elden ring";
+
+    fn from_lang_version(lang_id: u16, version: &str) -> Option<Self> {
+        match (lang_id, version) {
+            (LANG_ID_EN, "2.7.0.0") => Some(Self::Ww270),
+            (LANG_ID_JP, "2.7.0.1") => Some(Self::Jp2701),
+            _ => None,
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug)]
 pub struct Rva {
@@ -23,15 +41,15 @@ impl Deref for Rva {
     type Target = u32;
 
     fn deref(&self) -> &Self::Target {
-        static GAME_VERSION: LazyLock<GameVersion> = LazyLock::new(|| {
+        static GAME_VERSION: LazyLock<ERGameVersion> = LazyLock::new(|| {
             let program = Program::current();
-            GameVersion::detect(&program.into())
+            ERGameVersion::detect(&program.into())
                 .expect("this game version is not supported; expected ELDEN RING 1.17.0")
         });
 
         match *GAME_VERSION {
-            GameVersion::Ww270 => &self.ww,
-            GameVersion::Jp2701 => &self.jp,
+            ERGameVersion::Ww270 => &self.ww,
+            ERGameVersion::Jp2701 => &self.jp,
         }
     }
 }

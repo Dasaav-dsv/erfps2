@@ -39,7 +39,7 @@ where
     T: HavokShape,
     F: Fn(&hknpHit) -> bool,
 {
-    let havok_man = unsafe { CSHavokMan::instance().ok()? };
+    let havok_man = unsafe { CSHavokMan::instance_mut().ok()? };
 
     let mut params = CastParams::cast_shape(havok_man, origin, direction, filter, &mut shape);
 

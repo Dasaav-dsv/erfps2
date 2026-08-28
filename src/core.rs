@@ -234,7 +234,7 @@ where
 
     fn set_crosshair_if(&self, cond: bool) {
         let is_hud_enabled = unsafe {
-            GameDataMan::instance().is_some_and(|game_data_man| game_data_man.is_hud_enabled())
+            GameDataMan::instance().is_ok_and(|game_data_man| game_data_man.is_hud_enabled())
         };
 
         let crosshair = if cond && is_hud_enabled {
@@ -292,7 +292,7 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
 
         if self.can_transition()
             && should_not_lock_on
-            && self.player.module_container.action_request.action_timers.r3 > 0.0
+            && self.player.modules.action_request.action_timers.r3 > 0.0
         {
             self.should_transition = true;
 
@@ -492,7 +492,7 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
 
         for node in self
             .player
-            .module_container
+            .modules
             .behavior
             .hkb_context
             .hkb_character
@@ -549,16 +549,11 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
 
     fn can_show_tutorial(&self) -> bool {
         self.config.show_tutorial
-            && self
-                .player
-                .module_container
-                .action_request
-                .movement_request_duration
-                > 0.1
+            && self.player.modules.action_request.movement_request_duration > 0.1
     }
 
     fn show_tutorial(&self) {
-        if let Ok(event_flag) = unsafe { CSEventFlagMan::instance() }
+        if let Ok(event_flag) = unsafe { CSEventFlagMan::instance_mut() }
             && !event_flag
                 .virtual_memory_flag
                 .get_flag(TUTORIAL_EVENT_FLAG_ID)

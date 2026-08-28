@@ -218,7 +218,7 @@ unsafe fn update_chr_follow_cam(follow_cam: &mut ChrExFollowCam, original: &dyn 
 
 #[cfg_attr(debug_assertions, libhotpatch::hotpatch)]
 unsafe fn update_fe_man() {
-    let Ok(fe_man) = (unsafe { CSFeManImp::instance() }) else {
+    let Ok(fe_man) = (unsafe { CSFeManImp::instance_mut() }) else {
         return;
     };
 

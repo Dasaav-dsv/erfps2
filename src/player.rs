@@ -1,7 +1,7 @@
 use eldenring::{
     cs::{
-        CSModelIns, ChrAsmArmStyle, ChrIns, ChrMovementLimit, PlayerIns, ThrowNodeState,
-        WorldChrMan,
+        CSModelIns, ChrAsmArmStyle, ChrIns, ChrMovementLimit, LadderState, PlayerIns,
+        ThrowNodeState, WorldChrMan,
     },
     fd4::FD4ParamRepository,
     param::EQUIP_PARAM_WEAPON_ST,
@@ -64,7 +64,7 @@ pub trait PlayerExt {
 
 impl PlayerExt for PlayerIns {
     unsafe fn main_player<'a>() -> Option<&'a mut Self> {
-        let world_chr_man = unsafe { WorldChrMan::instance().ok()? };
+        let world_chr_man = unsafe { WorldChrMan::instance_mut().ok()? };
         world_chr_man.main_player.as_deref_mut()
     }
 
@@ -194,10 +194,10 @@ impl PlayerExt for PlayerIns {
         // Coded Sword uses the sheath model slot for its blade.
         const CODED_SWORD_ID: u32 = 2110000;
 
-        let lh_sheath_visibility = lh_weapon_param
-            .is_some_and(|(id, row)| id == CODED_SWORD_ID || row.is_dual_blade() != 0);
-        let rh_sheath_visibility = rh_weapon_param
-            .is_some_and(|(id, row)| id == CODED_SWORD_ID || row.is_dual_blade() != 0);
+        let lh_sheath_visibility =
+            lh_weapon_param.is_some_and(|(id, row)| id == CODED_SWORD_ID || row.is_dual_blade());
+        let rh_sheath_visibility =
+            rh_weapon_param.is_some_and(|(id, row)| id == CODED_SWORD_ID || row.is_dual_blade());
 
         enable_parts_visibilty(lh_weapon, lh_weapon_visibility);
         enable_parts_visibilty(rh_weapon, rh_weapon_visibility);
@@ -223,7 +223,7 @@ impl PlayerExt for PlayerIns {
     }
 
     fn has_action_request(&self) -> bool {
-        self.module_container
+        self.modules
             .event
             .ez_state_requests_state
             .iter()
@@ -237,21 +237,23 @@ impl PlayerExt for PlayerIns {
     }
 
     fn is_sprint_requested(&self) -> bool {
-        self.module_container.action_request.action_timers.roll > 0.3
+        self.modules.action_request.action_timers.roll > 0.3
     }
 
     fn is_riding(&self) -> bool {
-        self.module_container.ride.is_mounted
+        self.modules.ride.is_mounted
     }
 
     fn is_approaching_ladder(&self) -> bool {
-        self.module_container.ladder.ladder_state == 0
-            || self.module_container.ladder.ladder_state == 1
+        matches!(
+            self.modules.ladder.state,
+            LadderState::StartBottom | LadderState::StartTop
+        )
     }
 
     fn is_in_throw(&self) -> bool {
         matches!(
-            self.module_container.throw.throw_node.throw_state,
+            self.modules.throw.throw_node.throw_state,
             ThrowNodeState::InThrowTarget | ThrowNodeState::InThrowAttacker
         )
     }
@@ -260,11 +262,11 @@ impl PlayerExt for PlayerIns {
         self.chr_asm.equipment.arm_style == ChrAsmArmStyle::RightBothHands
             && self
                 .rh_weapon_param()
-                .is_none_or(|(_, row)| row.is_dual_blade() == 0)
+                .is_none_or(|(_, row)| !row.is_dual_blade())
             || self.chr_asm.equipment.arm_style == ChrAsmArmStyle::LeftBothHands
                 && self
                     .lh_weapon_param()
-                    .is_none_or(|(_, row)| row.is_dual_blade() == 0)
+                    .is_none_or(|(_, row)| !row.is_dual_blade())
     }
 
     fn lh_weapon_param(&self) -> Option<(u32, &'static EQUIP_PARAM_WEAPON_ST)> {

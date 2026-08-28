@@ -37,17 +37,18 @@ struct OriginalContents<'r, 't> {
 }
 
 pub fn show_tutorial_blocking() -> Option<bool> {
-    let param_repository = unsafe { FD4ParamRepository::instance().ok()? };
-    let tutorial_param_row = param_repository.get_mut::<TUTORIAL_PARAM_ST>(TUTORIAL_ROW_ID)?;
+    let param_repository = unsafe { FD4ParamRepository::instance_mut().ok()? };
+    let tutorial_param_row =
+        unsafe { param_repository.get_mut::<TUTORIAL_PARAM_ST>(TUTORIAL_ROW_ID)? };
 
-    let msg_repository = unsafe { MsgRepository::instance().ok()? };
+    let msg_repository = unsafe { MsgRepository::instance_mut().ok()? };
     let [tutorial_title, tutorial_text] =
         msg_repository.get_msg_disjoint_mut([(207, TUTORIAL_MSG_ID), (208, TUTORIAL_MSG_ID)])?;
 
     let menu_man = unsafe { CSMenuManImp::instance().ok()? };
     let popup_menu = unsafe { menu_man.popup_menu?.as_mut() };
 
-    let tpf_repo = unsafe { TpfRepository::instance().ok()? };
+    let tpf_repo = unsafe { TpfRepository::instance_mut().ok()? };
     load_tutorial_tpf(tpf_repo);
 
     std::thread::sleep(std::time::Duration::from_millis(800));
