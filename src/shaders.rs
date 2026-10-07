@@ -155,9 +155,6 @@ unsafe fn hook_shader_cb(program: Program) -> eyre::Result<()> {
         install_custom(cb_fisheye_hook)?.hook(|_| {
             |tone_map: Frame<ToneMapCb, -0x50>, is_enabled: R15<Ref<bool, 0xcb0>>| {
                 let flags = SHADER_FLAGS.load(Ordering::Acquire);
-                if flags == 0 {
-                    return;
-                }
 
                 let cylindricity = SHADER_CYLINDRICITY.load(Ordering::Acquire);
                 let strength_width_ratio = SHADER_STRENGTH_RATIO.load(Ordering::Acquire);
@@ -171,7 +168,7 @@ unsafe fn hook_shader_cb(program: Program) -> eyre::Result<()> {
                 tone_map.g_ErfpsCorrectParam = [cylindricity, strength_width_ratio];
                 tone_map.g_ErfpsCrosshairScaleReciprocal = [crosshair_scale_x, crosshair_scale_y];
 
-                *is_enabled.read() = true;
+                *is_enabled.read() = flags != 0;
             }
         });
     }
