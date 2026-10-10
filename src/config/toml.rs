@@ -35,6 +35,8 @@ pub struct Gameplay {
 #[derive(Debug, Deserialize)]
 pub struct Player {
     pub height_multiplier: f32,
+    pub camera_offset: f32,
+    pub position_arms: bool,
 }
 
 #[derive(Debug, Deserialize)]
