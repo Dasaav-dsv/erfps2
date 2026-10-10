@@ -48,6 +48,9 @@ track_dodges = false
 # Camera movement will be synchronized with head movement when the player is damaged.
 track_damage = false
 
+# Camera movement will be synchronized with head movement when attacking.
+track_attacks = false
+
 # Initial sprinting direction is restricted to moving forward.
 restricted_sprint = false
 
