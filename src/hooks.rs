@@ -82,6 +82,9 @@ pub fn hook_camera(program: Program) -> eyre::Result<()> {
 
         hook(follow_cam_follow, |hook| {
             move |param_1, param_2, param_3| {
+                if param_1.is_null() {
+                    return hook.call_original((param_1, param_2, param_3));
+                }
                 // Setting this flag disables position interpolation for the camera attach
                 // point in the function below.
                 let first_person = CoreLogic::is_first_person();
@@ -100,13 +103,16 @@ pub fn hook_camera(program: Program) -> eyre::Result<()> {
 
         hook(set_wwise_listener, |hook| {
             move |param_1, param_2| {
-                let mut param_2 = param_2.read();
+                if param_2.is_null() {
+                    return hook.call_original((param_1, param_2));
+                }
+                let mut param_2_val = param_2.read();
 
                 if let Some(listener) = wwise_listener_for_fp() {
-                    param_2.matrix = listener;
+                    param_2_val.matrix = listener;
                 }
 
-                hook.call_original((param_1, &param_2))
+                hook.call_original((param_1, &param_2_val))
             }
         })?;
 
@@ -118,7 +124,14 @@ pub fn hook_camera(program: Program) -> eyre::Result<()> {
 
         hook(posture_control_right, |hook| {
             move |param_1, param_2, param_3, param_4| {
-                let posture_angle = hand_posture_control(**param_1).unwrap_or(0);
+                let posture_angle = if !param_1.is_null()
+                    && !(*param_1).is_null()
+                    && !(**param_1).is_null()
+                {
+                    hand_posture_control(**param_1).unwrap_or(0)
+                } else {
+                    0
+                };
                 hook.call_original((param_1, param_2, param_3, param_4)) + posture_angle
             }
         })?;
@@ -132,14 +145,19 @@ pub fn hook_camera(program: Program) -> eyre::Result<()> {
 
         hook(chr_root_motion, |hook| {
             move |param_1, param_2, param_3, param_4| {
-                let mut param_3 = *param_3;
+                if param_1.is_null() || param_3.is_null() {
+                    return hook.call_original((param_1, param_2, param_3, param_4));
+                }
+                let mut param_3_val = *param_3;
 
-                if let Some(root_motion) = root_motion_modifier((*param_1).owner.as_ptr(), param_3)
-                {
-                    param_3 = root_motion;
+                let owner_ptr = (*param_1).owner.as_ptr();
+                if !owner_ptr.is_null() {
+                    if let Some(root_motion) = root_motion_modifier(owner_ptr, param_3_val) {
+                        param_3_val = root_motion;
+                    }
                 }
 
-                hook.call_original((param_1, param_2, &mut param_3, param_4));
+                hook.call_original((param_1, param_2, &mut param_3_val, param_4));
             }
         })?;
     }
