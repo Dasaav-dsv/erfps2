@@ -145,6 +145,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "const-default"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b396d1f76d455557e1218ec8066ae14bba60b4b36ecd55577ba979f5db7ecaa"
+
+[[package]]
 name = "dataview"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -167,8 +173,9 @@ checksum = "c2ea6706d74fca54e15f1d40b5cf7fe7f764aaec61352a9fcec58fe27e042fc8"
 
 [[package]]
 name = "diversion"
-version = "0.2.2"
-source = "git+https://github.com/Dasaav-dsv/diversion.git?rev=95eafb5892d0ac0fc4962b1434a64ee460d2cca6#95eafb5892d0ac0fc4962b1434a64ee460d2cca6"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "19c853c8dc4fc257a5f8bfeb03523f4fb2c813b12798a61b035a8aec104d37f7"
 dependencies = [
  "bump-into",
  "closure-ffi",
@@ -180,13 +187,15 @@ dependencies = [
 
 [[package]]
 name = "diversion-abi"
-version = "0.1.0"
-source = "git+https://github.com/Dasaav-dsv/diversion.git?rev=95eafb5892d0ac0fc4962b1434a64ee460d2cca6#95eafb5892d0ac0fc4962b1434a64ee460d2cca6"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b41d9f5d2ae92c4c226d2a705ec00b13d8bc123cd4bbe55363e3dc2599b3d923"
 dependencies = [
  "atomic-wait",
  "bump-into",
  "closure-ffi",
  "libc",
+ "rlsf",
  "slab",
  "xxhash-rust",
 ]
@@ -666,6 +675,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed2bf2547551a7053d6fdfafda3f938979645c44812fbfcda098faae3f1a362d"
 dependencies = [
  "bitflags",
+]
+
+[[package]]
+name = "rlsf"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07393724337be2ee43a9d86164df4505746874a3fa65913374bc6d6a92314362"
+dependencies = [
+ "cfg-if",
+ "const-default",
+ "libc",
+ "rustversion",
 ]
 
 [[package]]

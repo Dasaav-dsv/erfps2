@@ -22,9 +22,7 @@ windows = { version = "0.62.2", features = [
     "Win32_System_Memory",
     "Win32_UI_WindowsAndMessaging",
 ] }
-diversion = { git = "https://github.com/Dasaav-dsv/diversion.git", rev = "95eafb5892d0ac0fc4962b1434a64ee460d2cca6", features = [
-    "custom",
-] }
+diversion = { version = "0.3.1", features = ["custom"] }
 toml = "1.1.4"
 serde = { version = "1.0.228", features = ["serde_derive"] }
 closure-ffi = "5.0.1"
