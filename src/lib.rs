@@ -5,7 +5,11 @@ use windows::{
     core::BOOL,
 };
 
-use crate::{hooks::{hook_camera, tae::hook_tae}, program::Program, shaders::hook_shaders};
+use crate::{
+    hooks::{hook_camera, tae::hook_tae},
+    program::Program,
+    shaders::hook_shaders,
+};
 
 mod config;
 mod core;

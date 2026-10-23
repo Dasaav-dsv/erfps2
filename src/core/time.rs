@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use crate::core::frame_cached::{FrameCache};
+use crate::core::frame_cached::FrameCache;
 
 pub const FRAME_TIME_60: f32 = 1.0 / 60.0;
 

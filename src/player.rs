@@ -175,8 +175,7 @@ impl PlayerExt for PlayerIns {
         };
 
         if state {
-            for part in &mut chr_asm_model_ins
-                .parts_model_ins {
+            for part in &mut chr_asm_model_ins.parts_model_ins {
                 enable_parts_visibilty(part, true);
             }
 

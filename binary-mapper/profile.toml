@@ -83,7 +83,7 @@ pattern = "48 8b ce 40 88 be 88 04 00 00 e8 $ { ' } 0f 10 86 20 01 00 00"
 captures = ["", "UPDATE_FOLLOW_CAM_RVA"]
 
 [[patterns]]
-pattern = "48 8b 0d ? ? ? ? 0f 28 ce e8 $ { ' } 48 8b 8d e8 e5 01 00 e8"
+pattern = "48 8b 0d ? ? ? ? 0f 28 ce e8 $ { ' } 48 8b 8d f0 e5 01 00 e8"
 captures = ["", "UPDATE_LOCK_TGT_RVA"]
 
 [[patterns]]
