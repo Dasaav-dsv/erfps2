@@ -4,6 +4,7 @@ use strum::EnumCount;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, EnumCount)]
 pub enum BehaviorState {
     Attack,
+    AttackAsh,
     Damage,
     DeathAnim,
     DeathIdle,
@@ -43,7 +44,7 @@ impl BehaviorState {
         match name {
             _ if name.starts_with("JumpAttack_") => Some(Self::Attack),
             "Attack_SM" => Some(Self::Attack),
-            "SwordArts_SM" => Some(Self::Attack),
+            "SwordArts_SM" => Some(Self::AttackAsh),
 
             "Death_SM" => Some(Self::DeathAnim),
             "DeathIdle_Selector" => Some(Self::DeathIdle),

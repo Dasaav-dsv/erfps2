@@ -130,6 +130,7 @@ impl AnimatedHeadCamera {
         }
 
         self.rotation_previous = Some(input);
+
         self.rotate_towards_target(
             frame_time,
             args.rotation.speed,
@@ -139,13 +140,13 @@ impl AnimatedHeadCamera {
         self.rotation
     }
 
-    fn rotate_towards_target(&mut self, speed: f32, frame_time: f32, center_bias_until: f32) {
-        let angle = self.rotation_target.angle_between(Quat::IDENTITY);
+    fn rotate_towards_target(&mut self, frame_time: f32, speed: f32, center_bias_until: f32) {
+        let center_delta = self.rotation_target.angle_between(Quat::IDENTITY);
 
-        let biased_target = if angle < center_bias_until {
+        let biased_target = if center_delta < center_bias_until {
             self.rotation_target.rotate_towards(
                 Quat::IDENTITY,
-                angle * (1.0 - (angle / center_bias_until)).powi(2),
+                center_delta * (1.0 - (center_delta / center_bias_until)).powi(2),
             )
         } else {
             self.rotation_target
@@ -184,39 +185,31 @@ impl From<&CoreLogicContext<'_, World<'_>>> for Args {
         let model_matrix = context.player.model_matrix();
         let camera_matrix = context.chr_cam.pers_cam.matrix;
 
-        let rotation_args = if context.player.is_in_throw()
-            || (context.config.track_damage && context.has_state(BehaviorState::Damage))
-            || (context.config.track_damage
-                && context.has_state(BehaviorState::DeathAnim)
-                && !context.has_state(BehaviorState::DeathIdle))
-        {
-            RotationArgs {
-                track: true,
-                speed: 1.0,
-                center_bias_until: PI,
-                player_local: false,
-            }
-        } else if context.config.track_attacks && context.has_state(BehaviorState::Attack) {
-            RotationArgs {
-                track: true,
-                speed: 1.0,
-                center_bias_until: PI * 3.0 / 2.0,
-                player_local: true,
-            }
+        let in_damage = context.has_state(BehaviorState::Damage)
+            || (context.has_state(BehaviorState::DeathAnim)
+                && !context.has_state(BehaviorState::DeathIdle));
+
+        let mut rotation_args = RotationArgs {
+            track: false,
+            speed: 1.0,
+            center_bias_until: 0.0,
+            player_local: false,
+        };
+
+        if context.player.is_in_throw() {
+            rotation_args.track = true;
+        } else if context.config.track_damage && in_damage {
+            rotation_args.track = true;
         } else if context.config.track_dodges && context.has_state(BehaviorState::Evasion) {
-            RotationArgs {
-                track: true,
-                speed: 1.4,
-                center_bias_until: PI * 3.0 / 2.0,
-                player_local: false,
-            }
-        } else {
-            RotationArgs {
-                track: false,
-                speed: 1.0,
-                center_bias_until: PI * 3.0 / 2.0,
-                player_local: false,
-            }
+            rotation_args.track = true;
+        } else if context.config.track_attacks && context.has_state(BehaviorState::Attack) {
+            rotation_args.track = true;
+            rotation_args.center_bias_until = PI * 1.25;
+            rotation_args.player_local = true;
+        } else if context.config.track_ashes && context.has_state(BehaviorState::AttackAsh) {
+            rotation_args.track = true;
+            rotation_args.speed = 1.2;
+            rotation_args.player_local = true;
         };
 
         Self {

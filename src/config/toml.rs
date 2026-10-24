@@ -30,6 +30,7 @@ pub struct Gameplay {
     pub track_dodges: bool,
     pub track_damage: bool,
     pub track_attacks: bool,
+    pub track_ashes: bool,
     pub restricted_sprint: bool,
 }
 

@@ -51,6 +51,14 @@ track_damage = false
 # Camera movement will be synchronized with head movement when attacking.
 track_attacks = false
 
+# Camera movement will be synchronized with head movement when using Ashes of War.
+# Some attacks are not supported (yet?), the animations are too fast or erratic.
+#   Examples:
+#     Black Knife: Blade of Death art (double spin)
+#     Grave Scythe: Spinning Slash art, press twice
+#     Mantis Blade: Spinning Slash art, press twice
+track_ashes = false
+
 # Initial sprinting direction is restricted to moving forward.
 restricted_sprint = false
 
