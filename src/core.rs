@@ -302,7 +302,7 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
         }
     }
 
-    pub fn camera_position(&mut self) -> F32ViewMatrix {
+    pub fn camera_position(&mut self) -> (F32ViewMatrix, Quat) {
         let camera_rotation = Quat::from_mat3a(&self.chr_cam.pers_cam.matrix.rotation());
 
         let tracker_args = (&*self).into();
@@ -333,7 +333,9 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
             + head_rotation.transpose() * head_contrib
             + camera_rotation.inverse() * cam_contrib;
 
-        Mat4::from_rotation_translation(camera_rotation, head_position).into()
+        let cam_mtx = Mat4::from_rotation_translation(camera_rotation, head_position).into();
+
+        (cam_mtx, output.tracking_rotation)
     }
 
     pub fn update_cs_cam(&mut self) {
@@ -341,11 +343,13 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
             return;
         }
 
-        let camera_pos = self.camera_position();
+        let (camera_pos, tracking_rotation) = self.camera_position();
 
         if self.config.soft_lock_on || !self.lock_tgt.is_locked_on {
-            let lock_on_pos =
-                Vec4::from(camera_pos.3) + Vec4::from(self.chr_cam.pers_cam.matrix.2) * 10.0;
+            let lock_on_pos = Vec4::from(camera_pos.3)
+                + tracking_rotation
+                    .mul_vec3(Vec4::from(self.chr_cam.pers_cam.matrix.2).truncate() * 10.0)
+                    .extend(0.0);
             self.player.set_lock_on_target_position(lock_on_pos);
         }
 
@@ -383,7 +387,7 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
             self.player.make_transparent(is_dodging);
         }
 
-        let camera_pos = self.camera_position();
+        let (camera_pos, _) = self.camera_position();
 
         if self.config.restricted_sprint {
             self.restrict_sprint(camera_pos.rotation());
