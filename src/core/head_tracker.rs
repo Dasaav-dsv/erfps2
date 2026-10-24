@@ -1,5 +1,5 @@
 use fromsoftware_shared::F32ModelMatrix;
-use glam::{Mat4, Quat, Vec3};
+use glam::{Mat3A, Mat4, Quat, Vec3};
 
 use crate::{
     core::{
@@ -24,6 +24,7 @@ pub struct Args {
     pub stabilizer_factor: f32,
     pub use_stabilizer: bool,
     pub is_tracked: bool,
+    pub camera_offset: f32,
 }
 
 pub struct Output {
@@ -51,6 +52,7 @@ impl FrameCache for HeadTracker {
 
     fn update(&mut self, frame_time: f32, args: Self::Input) -> Self::Output<'_> {
         let mut head_position = args.head_matrix.translation();
+        head_position += args.head_matrix.rotation::<Mat3A>().transpose() * Vec3::new(0.0, args.camera_offset, 0.0);
 
         if args.use_stabilizer {
             let player_matrix = Mat4::from(args.model_matrix);
@@ -111,6 +113,7 @@ impl From<&CoreLogicContext<'_, World<'_>>> for Args {
             stabilizer_factor: context.config.stabilizer_factor,
             use_stabilizer: context.config.use_stabilizer,
             is_tracked,
+            camera_offset: context.config.camera_offset,
         }
     }
 }

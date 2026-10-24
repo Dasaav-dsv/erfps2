@@ -276,7 +276,9 @@ unsafe fn hand_posture_control(some_player: *const PlayerIns) -> Option<i32> {
     let main_player = unsafe { PlayerIns::main_player()? };
     let is_main_player = ptr::eq(some_player, main_player);
 
-    if !is_main_player || main_player.is_2h() || !CoreLogic::is_first_person() {
+    if !is_main_player || main_player.is_2h() || !CoreLogic::is_first_person()
+        || !CoreLogic::scope::<Void, _>(|context| { context.config.position_arms })
+    {
         return None;
     }
 
