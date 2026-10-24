@@ -490,6 +490,26 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
     pub fn update_behavior_states(&mut self) {
         let mut behavior_set = BehaviorStateSet::default();
 
+        let hkb_context_ptr = self.player.modules.behavior.hkb_context.as_ptr();
+        if hkb_context_ptr.is_null() {
+            return;
+        }
+
+        let hkb_char_ptr = self.player.modules.behavior.hkb_context.hkb_character.as_ptr();
+        if hkb_char_ptr.is_null() {
+            return;
+        }
+
+        let bg_ptr = self.player.modules.behavior.hkb_context.hkb_character.behavior_graph.as_ptr();
+        if bg_ptr.is_null() {
+            return;
+        }
+
+        let flat_ptr = self.player.modules.behavior.hkb_context.hkb_character.behavior_graph.flat.as_ptr();
+        if flat_ptr.is_null() {
+            return;
+        }
+
         for node in self
             .player
             .modules
@@ -502,6 +522,10 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
             .map(|ptr| unsafe { ptr.as_ref() })
         {
             if node.flags[6] & 1 != 0 {
+                continue;
+            }
+
+            if node.unk08.is_null() {
                 continue;
             }
 
