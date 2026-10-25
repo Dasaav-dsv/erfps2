@@ -1,6 +1,6 @@
 use std::{
     f32::consts::PI,
-    ffi::{CStr, c_char},
+    ffi::CStr,
     mem,
     ops::{Deref, DerefMut},
     ptr::NonNull,
@@ -490,22 +490,29 @@ impl<'s> CoreLogicContext<'_, World<'s>> {
     pub fn update_behavior_states(&mut self) {
         let mut behavior_set = BehaviorStateSet::default();
 
-        for node in self
+        let behavior_node_iter = self
             .player
             .modules
             .behavior
             .hkb_context
-            .hkb_character
-            .behavior_graph
-            .flat
-            .iter()
-            .map(|ptr| unsafe { ptr.as_ref() })
-        {
-            if node.flags[6] & 1 != 0 {
-                continue;
-            }
+            .as_ref()
+            .and_then(|context| {
+                let behavior_graph = context
+                    .hkb_character
+                    .as_deref()?
+                    .behavior_graph
+                    .as_deref()?;
 
-            let name = unsafe { *node.unk08.byte_add(0x48).cast::<*const c_char>() };
+                Some(&**behavior_graph.flat)
+            })
+            .into_iter()
+            .flatten();
+
+        for name in behavior_node_iter.filter_map(|ptr| {
+            let node = unsafe { ptr.as_ref()? };
+            let unk08 = unsafe { node.unk08.as_ref()? };
+            (node.flags[6] & 1 == 0).then_some(unk08.name)
+        }) {
             if !name.is_null()
                 && let Ok(name) = unsafe { CStr::from_ptr(name).to_str() }
                 && let Ok(state) = name.try_into()
