@@ -262,16 +262,6 @@ unsafe fn wwise_listener_for_fp() -> Option<F32ViewMatrix> {
 }
 
 #[cfg_attr(debug_assertions, libhotpatch::hotpatch)]
-unsafe fn tae700_override(args: &mut [f32; 8]) {
-    if !CoreLogic::is_first_person() {
-        return;
-    }
-
-    args[4] = 0.0;
-    args[5] = 0.0;
-}
-
-#[cfg_attr(debug_assertions, libhotpatch::hotpatch)]
 unsafe fn hand_posture_control(some_player: *const PlayerIns) -> Option<i32> {
     let main_player = unsafe { PlayerIns::main_player()? };
     let is_main_player = ptr::eq(some_player, main_player);
