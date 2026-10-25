@@ -16,7 +16,6 @@ pub struct AnimatedHeadCamera {
     rotation_previous: Option<Quat>,
     rotation: Quat,
     rotation_target: Quat,
-    last_rotation_args: RotationArgs,
     stabilizer: CameraStabilizer,
     output: Option<Output>,
 }
@@ -105,31 +104,27 @@ impl AnimatedHeadCamera {
     }
 
     fn track_head_rotation(&mut self, frame_time: f32, args: &Args) -> Quat {
-        let mut input = Quat::from_mat3a(&args.head_matrix.rotation());
+        let head_rotation = Quat::from_mat3a(&args.head_matrix.rotation());
+        let player_rotation = Quat::from_mat3a(&args.player_matrix.rotation());
 
-        if args.rotation.player_local != self.last_rotation_args.player_local {
-            self.last_rotation_args = args.rotation;
-            self.rotation_previous = None;
-            self.rotation_target = Quat::IDENTITY;
-        }
-
-        if args.rotation.player_local {
-            let player_rotation = Quat::from_mat3a(&args.player_matrix.rotation());
-            input = player_rotation.inverse() * input;
-        }
-
-        if let Some(last) = self.rotation_previous
-            && args.rotation.track
-        {
-            self.rotation_target *= last.inverse() * input;
-            self.rotation_target = self.rotation_target.normalize();
+        if args.rotation.track {
+            if args.rotation.player_local {
+                let local_head_rotation = player_rotation.inverse() * head_rotation;
+                let local_head_rotation = Quat::from_axis_angle(Vec3::Y, PI) * local_head_rotation;
+                self.rotation_target = local_head_rotation;
+            } else {
+                if let Some(last) = self.rotation_previous {
+                    self.rotation_target *= last.inverse() * head_rotation;
+                    self.rotation_target = self.rotation_target.normalize();
+                }
+            }
         } else {
             self.rotation_target = self
                 .rotation_target
                 .slerp(Quat::IDENTITY, frame_time * 10.0);
         }
 
-        self.rotation_previous = Some(input);
+        self.rotation_previous = Some(head_rotation);
 
         self.rotate_towards_target(
             frame_time,
