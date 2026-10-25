@@ -133,7 +133,7 @@ pub fn enable_fov_correction(
 }
 
 pub fn set_crosshair(crosshair: CrosshairKind, scale: (f32, f32)) {
-    let _ = SHADER_FLAGS.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |value| {
+    let _ = SHADER_FLAGS.try_update(Ordering::Relaxed, Ordering::Relaxed, |value| {
         Some(value & !0b11100 | (crosshair as u32 & 0b111) << 2)
     });
 
