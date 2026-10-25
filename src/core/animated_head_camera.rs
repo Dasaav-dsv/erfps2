@@ -201,6 +201,7 @@ impl From<&CoreLogicContext<'_, World<'_>>> for Args {
         } else if context.config.track_damage && in_damage {
             rotation_args.track = true;
         } else if context.config.track_dodges && context.has_state(BehaviorState::Evasion) {
+            rotation_args.player_local = true;
             rotation_args.track = true;
         } else if context.config.track_attacks && context.has_state(BehaviorState::Attack) {
             rotation_args.track = true;
