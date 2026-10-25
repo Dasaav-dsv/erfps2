@@ -32,6 +32,10 @@ pub struct Config {
 
     pub track_damage: bool,
 
+    pub track_attacks: bool,
+
+    pub track_ashes: bool,
+
     pub restricted_sprint: bool,
 
     pub use_stabilizer: bool,
@@ -100,8 +104,10 @@ impl From<toml::Config> for Config {
             soft_lock_on: config.gameplay.soft_lock_on,
             unlocked_movement: config.gameplay.unlocked_movement,
             unobtrusive_dodges: config.gameplay.unobtrusive_dodges,
-            track_dodges: config.gameplay.track_dodges,
-            track_damage: config.gameplay.track_damage,
+            track_dodges: config.tracker.track_dodges,
+            track_damage: config.tracker.track_damage,
+            track_attacks: config.tracker.track_attacks,
+            track_ashes: config.tracker.track_ashes,
             restricted_sprint: config.gameplay.restricted_sprint,
             use_stabilizer: config.stabilizer.enabled,
             stabilizer_window,

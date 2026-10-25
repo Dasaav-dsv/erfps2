@@ -42,12 +42,6 @@ unlocked_movement = true
 # The player's body is made transparent during dodges, improving visibility.
 unobtrusive_dodges = false
 
-# Camera movement will be synchronized with head movement for dodges.
-track_dodges = false
-
-# Camera movement will be synchronized with head movement when the player is damaged.
-track_damage = false
-
 # Initial sprinting direction is restricted to moving forward.
 restricted_sprint = false
 
@@ -56,6 +50,24 @@ restricted_sprint = false
 # The player is assumed to be about 170cm (5'7") tall by default.
 # Possible value range: 0.95 - 1.05
 height_multiplier = 1.0
+
+[tracker]
+# Synchronize camera movement with head movement for dodges.
+track_dodges = false
+
+# Synchronize camera movement with head movement when the player is damaged.
+track_damage = false
+
+# Synchronize camera movement with head movement when attacking.
+track_attacks = false
+
+# Synchronize camera movement with head movement when using Ashes of War.
+# Some attacks are not supported (yet?), the animations are too fast or erratic.
+#   Examples:
+#     Black Knife: Blade of Death art (double spin)
+#     Grave Scythe: Spinning Slash art, press twice
+#     Mantis Blade: Spinning Slash art, press twice
+track_ashes = false
 
 [stabilizer]
 # Stabilization of camera movement in first person.

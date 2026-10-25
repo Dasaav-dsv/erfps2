@@ -8,6 +8,7 @@ pub struct Config {
     pub gameplay: Gameplay,
     pub player: Player,
     pub stabilizer: Stabilizer,
+    pub tracker: Tracker,
     pub crosshair: Crosshair,
 }
 
@@ -27,8 +28,6 @@ pub struct Gameplay {
     pub soft_lock_on: bool,
     pub unlocked_movement: bool,
     pub unobtrusive_dodges: bool,
-    pub track_dodges: bool,
-    pub track_damage: bool,
     pub restricted_sprint: bool,
 }
 
@@ -42,6 +41,14 @@ pub struct Stabilizer {
     pub enabled: bool,
     pub smoothing_window: f32,
     pub smoothing_factor: f32,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Tracker {
+    pub track_dodges: bool,
+    pub track_damage: bool,
+    pub track_attacks: bool,
+    pub track_ashes: bool,
 }
 
 #[derive(Debug, Deserialize)]
