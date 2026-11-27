@@ -6,7 +6,7 @@ use std::{
 use diversion::hook::custom::{
     install_custom,
     place::{Place, Ref},
-    x86_64::{Frame, R15},
+    x86_64::{Frame, R8, R15},
 };
 use portable_atomic::AtomicF32;
 use windows::{
@@ -19,45 +19,14 @@ use crate::{
     hooks::install::hook,
     program::Program,
     rva::{
-        ADD_PIXEL_SHADER_RVA, CB_FISHEYE_HOOK_RVA, GX_FFX_DRAW_CONTEXT_RVA, GX_FFX_DRAW_PASS_RVA,
-        USES_DITHERING_RVA,
+        ADD_PIXEL_SHADER_RVA, CB_FISHEYE_HOOK_RVA, CB_SPEEDTREE_HOOK_RVA, GX_FFX_DRAW_CONTEXT_RVA,
+        GX_FFX_DRAW_PASS_RVA, GX_RENDER_EXEC_CONTEXT_VMT_RVA, USES_DITHERING_RVA,
     },
+    shaders::cbuffer::{SceneParamCb, SpeedTreeCb, ToneMapCb},
 };
 
+mod cbuffer;
 pub mod screen;
-
-// Mirrors shaders/ToneMap_PostHook.hlsl.
-#[allow(non_snake_case)]
-#[repr(C)]
-struct ToneMapCb {
-    g_ToneMapInvSceneLumScale: [f32; 3],
-    g_ErfpsFlags: i32,
-    g_ReinhardParam: [f32; 4],
-    g_ToneMapParam: [f32; 4],
-    g_ToneMapSceneLumScale: [f32; 4],
-    g_AdaptParam: [f32; 4],
-    g_AdaptCenterWeight: [f32; 4],
-    g_BrightPassThreshold: [f32; 4],
-    g_GlareLuminance: [f32; 4],
-    g_BloomBoostColor: [f32; 4],
-    g_vBloomFinalColor: [f32; 4],
-    g_vBloomScaleParam: [f32; 4],
-    g_mtxColorMultiplyer: [f32; 12],
-    g_vChromaticAberrationRG: [f32; 4],
-    g_vChromaticAberrationB: [f32; 2],
-    g_ErfpsCorrectParam: [f32; 2],
-    g_bEnableFlags: [i32; 4],
-    g_vFeedBackBlurParam: [f32; 4],
-    g_vVignettingParam: [f32; 4],
-    g_vHDRDisplayParam: [f32; 4],
-    g_vChromaticAberrationShapeParam: [f32; 4],
-    g_vScreenSize: [f32; 4],
-    g_vSampleDistanceAdjust: [f32; 4],
-    g_vMaxSampleCount: [i32; 4],
-    g_vScenePreExposure: [f32; 4],
-    g_vCameraParam: [f32; 2],
-    g_ErfpsCrosshairScaleReciprocal: [f32; 2],
-}
 
 static TONE_MAP_HOOK: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/ToneMap_PostHook.ppo"));
 
@@ -169,6 +138,35 @@ unsafe fn hook_shader_cb(program: Program) -> eyre::Result<()> {
                 tone_map.g_ErfpsCrosshairScaleReciprocal = [crosshair_scale_x, crosshair_scale_y];
 
                 *is_enabled.read() = flags != 0;
+            }
+        });
+
+        let copy_cb_scene_param =
+            *program.derva::<unsafe extern "C" fn(*mut c_void, u32, *mut f32, *mut c_void)>(
+                GX_RENDER_EXEC_CONTEXT_VMT_RVA + 0x18,
+            );
+
+        hook(copy_cb_scene_param, |hook| {
+            move |param_1, param_2, param_3, param_4| {
+                hook.call_original((param_1, param_2, param_3, param_4));
+                if param_2 == 8 && !ENABLE_DITHERING.load(Ordering::Relaxed) {
+                    let cbuffer = &mut *param_1.byte_add(0xf20).cast::<SceneParamCb>();
+                    cbuffer.FC_CameraFadeEnable = 0;
+                }
+            }
+        })?;
+
+        let speedtree_cb_hook = program.derva_ptr::<*const ()>(CB_SPEEDTREE_HOOK_RVA);
+
+        install_custom(speedtree_cb_hook)?.hook(|_| {
+            |mut cbuffer: R8<Ref<SpeedTreeCb>>| {
+                if !ENABLE_DITHERING.load(Ordering::Relaxed) {
+                    cbuffer.u_fFadeMinDist = 0.25;
+                    cbuffer.u_fFadeMaxDist = 0.4;
+                    cbuffer.u_fCameraDitheFadeMin_LEAF = 0.0;
+                    cbuffer.u_fCameraDitheFadeMin_FROND = 0.0;
+                    cbuffer.u_fCameraDitheFadeMin_BRANCH = 0.0;
+                }
             }
         });
     }

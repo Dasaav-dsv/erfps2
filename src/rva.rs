@@ -1,4 +1,7 @@
-use std::{ops::Deref, sync::LazyLock};
+use std::{
+    ops::{self, Deref},
+    sync::LazyLock,
+};
 
 use fromsoftware_shared::{GameVersion, LANG_ID_EN, LANG_ID_JP};
 
@@ -54,6 +57,17 @@ impl Deref for Rva {
     }
 }
 
+impl ops::Add<u32> for Rva {
+    type Output = Self;
+
+    fn add(self, rhs: u32) -> Self::Output {
+        Self {
+            ww: self.ww + rhs,
+            jp: self.jp + rhs,
+        }
+    }
+}
+
 macro_rules! rva {
     ($($i:ident),*$(,)*) => {
         $(pub const $i: Rva = Rva::new(ww::$i, jp::$i);)*
@@ -67,6 +81,7 @@ rva! {
     CAM_WALL_RECOVERY_RVA,
     CAST_SHAPE_RVA,
     CB_FISHEYE_HOOK_RVA,
+    CB_SPEEDTREE_HOOK_RVA,
     CHR_CAN_TARGET_RVA,
     CHR_ROOT_MOTION_RVA,
     CHR_TAE_ANIM_EVENT_VMT_RVA,
@@ -74,6 +89,7 @@ rva! {
     GET_DMY_POS_RVA,
     GX_FFX_DRAW_CONTEXT_RVA,
     GX_FFX_DRAW_PASS_RVA,
+    GX_RENDER_EXEC_CONTEXT_VMT_RVA,
     HKNP_SPHERE_SHAPE_RVA,
     LOAD_TPF_RES_CAP_RVA,
     MMS_UPDATE_CHR_CAM_RVA,

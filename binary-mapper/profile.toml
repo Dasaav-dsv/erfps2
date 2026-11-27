@@ -19,6 +19,10 @@ pattern = "66 0f 7f 8d a0 00 00 00 ' 4c 8b 44 24 70"
 captures = ["", "CB_FISHEYE_HOOK_RVA"]
 
 [[patterns]]
+pattern = "48 8b 4f 20 4c 8d 44 24 ? 41 b9 f0 01 00 00 f3 0f 11 ? 24 4c 48 8b d6 89 85 ? ? ? ? f2 0f 11 85 ? ? ? ? ' e8"
+captures = ["", "CB_SPEEDTREE_HOOK_RVA"]
+
+[[patterns]]
 pattern = "56 48 83 ec 30 48 8b f2 48 85 c9 74 ? 48 85 d2 74 ? 48 3b ca"
 captures = ["CHR_CAN_TARGET_RVA"]
 
@@ -45,6 +49,10 @@ captures = ["GX_FFX_DRAW_CONTEXT_RVA"]
 [[patterns]]
 pattern = "48 8b 46 08 48 8b d7 48 8b 88 48 04 00 00 e8 $ { ' }"
 captures = ["", "GX_FFX_DRAW_PASS_RVA"]
+
+[[vmts]]
+class = "GXSR::GXRenderExecContext"
+vftable = "GX_RENDER_EXEC_CONTEXT_VMT_RVA"
 
 [[patterns]]
 pattern = "e8 $ { ' } 48 8b d8 eb 02 33 db 0f b7 44 24 30 66 89 43 10"
