@@ -22,10 +22,16 @@ windows = { version = "0.62.2", features = [
     "Win32_System_Memory",
     "Win32_UI_WindowsAndMessaging",
 ] }
-diversion = { version = "0.3.1", features = ["custom"] }
+diversion = { version = "0.3.3", git = "https://github.com/Dasaav-dsv/diversion.git", features = [
+    "custom",
+] }
 toml = "1.1.4"
 serde = { version = "1.0.228", features = ["serde_derive"] }
-closure-ffi = "5.0.1"
+closure-ffi = { git = "https://github.com/Dasaav-dsv/closure-ffi.git", branch = "refactor/jit-alloc", default-features = false, features = [
+    "default_jit_alloc",
+    "std",
+    "safe_jit",
+] }
 pelite = "0.10.0"
 strum = { version = "0.27.2", features = ["derive"] }
 bitvec = "1.0.1"
