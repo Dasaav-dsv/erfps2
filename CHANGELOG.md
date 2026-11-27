@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.3.7] 2026-10-27
+
+### Added
+
+- More head tracking options and fixes by [weltensturm](https://github.com/weltensturm) in #5.
+- `tracker.track_attacks` erfps2.toml key.
+- `tracker.track_ashes` erfps2.toml key.
+
+### Fixed
+
+- Vegetation (grass and trees) fading out when too close to the first person camera.
+- Potential null pointer dereferences from #9.
+
+### Changed
+
+- `track_dodges` to `tracker.track_dodges` erfps2.toml key.
+- `track_damage` to `tracker.track_damage` erfps2.toml key.
+
 ## [0.3.6] 2026-10-23
 
 ### Added
